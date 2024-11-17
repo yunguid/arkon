@@ -1,0 +1,17 @@
+# Node
+node_modules/
+package-lock.json
+
+# Python
+__pycache__/
+*.pyc
+.env
+logdir/
+
+# IDE
+.vscode/
+.idea/
+
+# Build
+build/
+dist/
