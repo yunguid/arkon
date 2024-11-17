@@ -257,6 +257,17 @@ const UploadForm = () => {
       .on('mouseout', () => {
         tooltip.transition().duration(500).style('opacity', 0);
       });
+
+    // Add Y axis label
+    g.append('text')
+      .attr('transform', 'rotate(-90)')
+      .attr('y', 0 - margin.left)
+      .attr('x', 0 - (height / 2))
+      .attr('dy', '1em')
+      .style('text-anchor', 'middle')
+      .style('fill', '#1a237e')
+      .style('font-size', '14px')
+      .text('Total Amount ($)');
   }, []);
 
   useEffect(() => {
@@ -559,6 +570,17 @@ const UploadForm = () => {
           .duration(500)
           .style('opacity', 0);
       });
+
+    // Add Y axis label
+    g.append('text')
+      .attr('transform', 'rotate(-90)')
+      .attr('y', 0 - margin.left + 10)
+      .attr('x', 0 - (height / 2))
+      .attr('dy', '1em')
+      .style('text-anchor', 'middle')
+      .style('fill', '#1a237e')
+      .style('font-size', '14px')
+      .text('Number of Transactions');
   }, []);
 
   useEffect(() => {
