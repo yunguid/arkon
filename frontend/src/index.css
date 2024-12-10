@@ -1,0 +1,131 @@
+@import url('https://fonts.googleapis.com/css2?family=Spectral:wght@300;400;500&family=Work+Sans:wght@300;400;500&display=swap');
+
+:root {
+  /* Core colors - rich chestnuts and deep blues */
+  --color-bg-primary: #1C1C28;
+  --color-bg-secondary: #232336;
+  --color-bg-tertiary: #2B2B40;
+  
+  /* Rich gradients */
+  --accent-gradient: linear-gradient(135deg, #4A3B52 0%, #2B2B40 100%);
+  --accent-gradient-hover: linear-gradient(135deg, #5A4B62 0%, #3B3B50 100%);
+  --text-gradient: linear-gradient(90deg, #E8E6F0 0%, #B8B7C9 100%);
+  
+  /* Chestnut accents */
+  --color-chestnut: #8B6B7D;
+  --color-chestnut-light: #A88B9D;
+  --color-chestnut-dark: #6B4B5D;
+  
+  /* UI Colors - sophisticated grays */
+  --color-text: #E8E6F0;
+  --color-text-muted: #B8B7C9;
+  --color-border: rgba(184, 183, 201, 0.12);
+  --color-highlight: rgba(232, 230, 240, 0.04);
+  
+  /* Shadows & Effects */
+  --shadow-soft: 0 4px 20px rgba(28, 28, 40, 0.2);
+  --shadow-strong: 0 8px 30px rgba(28, 28, 40, 0.3);
+  --glow-accent: 0 0 25px rgba(139, 107, 125, 0.15);
+  --blur-bg: blur(12px);
+  
+  /* Refined animations */
+  --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-bg-primary);
+  color: var(--color-text);
+  font-family: 'Work Sans', sans-serif;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Spectral', serif;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  margin: 0;
+  background: var(--text-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+button, input, select {
+  background: var(--accent-gradient);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  padding: 12px 24px;
+  border-radius: 3px;
+  transition: all var(--transition-fast);
+  font-family: 'Work Sans', sans-serif;
+  letter-spacing: 0.02em;
+  backdrop-filter: var(--blur-bg);
+  box-shadow: var(--shadow-soft);
+}
+
+button:hover {
+  background: var(--accent-gradient-hover);
+  border-color: var(--color-chestnut);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-strong), var(--glow-accent);
+}
+
+/* Refined scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-chestnut);
+  border-radius: 3px;
+}
+
+/* Glass morphism with chestnut undertones */
+.glass-container {
+  background: rgba(35, 35, 54, 0.7);
+  backdrop-filter: var(--blur-bg);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-soft);
+}
+
+/* Elegant hover effect */
+.hover-underline {
+  position: relative;
+}
+
+.hover-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: var(--color-chestnut-light);
+  transition: width var(--transition-smooth);
+}
+
+.hover-underline:hover::after {
+  width: 100%;
+}
+
+/* Card styling */
+.card {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  padding: 24px;
+  transition: all var(--transition-smooth);
+}
+
+.card:hover {
+  border-color: var(--color-chestnut);
+  box-shadow: var(--shadow-strong), var(--glow-accent);
+  transform: translateY(-2px);
+} 

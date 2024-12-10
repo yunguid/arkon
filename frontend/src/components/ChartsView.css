@@ -1,0 +1,230 @@
+.insights-container {
+  padding: 2rem;
+  background: var(--military-gray-light);
+  border: 2px solid var(--military-red);
+  border-radius: 0;
+}
+
+.chart-section {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: var(--military-gray-light);
+  border: 2px solid var(--military-red);
+  border-radius: 0;
+  position: relative;
+}
+
+.chart-section::before {
+  content: 'CLASSIFIED';
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  color: rgba(187, 10, 30, 0.2);
+  font-size: 0.8rem;
+  letter-spacing: 2px;
+}
+
+.chart-title {
+  font-family: 'Share Tech Mono', monospace;
+  text-transform: uppercase;
+  color: var(--military-red);
+  border-bottom: 2px solid var(--military-red);
+  padding-bottom: 0.5rem;
+  letter-spacing: 2px;
+}
+
+.chart-container {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: var(--color-bg-secondary);
+  border-radius: 3px;
+}
+
+/* Custom chart colors */
+:root {
+  --chart-colors: #8B6B7D, #4A3B52, #2B2B40, #A88B9D, #6B4B5D;
+}
+
+.ai-categories-table {
+  margin-top: 2rem;
+  overflow-x: auto;
+}
+
+.ai-categories-table table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  background: var(--color-bg-secondary);
+  border-radius: 3px;
+}
+
+.ai-categories-table th,
+.ai-categories-table td {
+  padding: 0.8rem;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+  font-family: 'Work Sans', sans-serif;
+  text-align: left;
+}
+
+.ai-categories-table th {
+  background: var(--color-bg-tertiary);
+  font-weight: 500;
+}
+
+.ai-categories-table tr:hover {
+  background: var(--color-highlight);
+}
+
+.category-breakdown {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 1.5rem;
+  background: var(--military-gray-light);
+  border: 2px solid var(--military-red);
+}
+
+.category-breakdown table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 auto;
+}
+
+.category-breakdown th,
+.category-breakdown td {
+  padding: 1rem 2rem;
+  text-align: center;
+  border-bottom: 1px solid rgba(187, 10, 30, 0.3);
+  font-family: 'Share Tech Mono', monospace;
+}
+
+.category-breakdown th {
+  background: var(--military-red);
+  color: var(--military-gray-light);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: normal;
+}
+
+.category-breakdown tr:last-child td {
+  border-bottom: none;
+}
+
+.category-breakdown tr:hover td {
+  background: rgba(187, 10, 30, 0.05);
+}
+
+.recurring-section {
+  margin: 2rem 0;
+  padding: 2rem;
+  background: var(--color-bg-tertiary);
+  border-radius: 8px;
+}
+
+.recurring-chart-container {
+  border: 1px solid var(--military-red);
+  background: var(--military-gray-light);
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+/* Style the x-axis labels */
+.recurring-chart-container .recharts-xAxis .recharts-cartesian-axis-tick {
+  margin-top: 10px;
+}
+
+.recurring-chart-container .recharts-xAxis .recharts-cartesian-axis-tick-value {
+  transform: translate(0, 0);
+  width: 80px;
+  white-space: normal;
+  word-wrap: break-word;
+  display: block;
+  line-height: 1.2;
+  text-align: center;
+}
+
+/* Ensure labels don't overlap with chart */
+.recurring-chart-container .recharts-wrapper {
+  padding-bottom: 20px;
+}
+
+/* Improve tooltip appearance */
+.recurring-chart-container .recharts-tooltip-wrapper {
+  background: var(--color-bg-secondary);
+  border-radius: 4px;
+  box-shadow: var(--shadow-soft);
+  opacity: 0.95;
+}
+
+/* Style the legend */
+.recurring-chart-container .recharts-default-legend {
+  margin-bottom: 1rem !important;
+  padding: 0.5rem !important;
+}
+
+.recharts-cartesian-grid line {
+  stroke: rgba(187, 10, 30, 0.2);
+}
+
+.recharts-text {
+  font-family: 'Share Tech Mono', monospace !important;
+  fill: var(--military-gray-dark) !important;
+}
+
+.recharts-legend-item-text {
+  font-family: 'Share Tech Mono', monospace !important;
+  color: var(--military-gray-dark) !important;
+}
+
+/* Table styles */
+.category-breakdown table,
+.ai-categories-table table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 2px solid var(--military-red);
+}
+
+.category-breakdown th,
+.ai-categories-table th {
+  background: var(--military-red);
+  color: var(--military-gray-light);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 0.5rem;
+  font-weight: normal;
+}
+
+.category-breakdown td,
+.ai-categories-table td {
+  padding: 0.5rem;
+  border-bottom: 1px solid rgba(187, 10, 30, 0.3);
+  font-family: 'Share Tech Mono', monospace;
+}
+
+/* Donut chart layout */
+.donut-chart-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  margin-top: 1rem;
+}
+
+.chart-wrapper {
+  width: 100%;
+  max-width: 600px;
+}
+
+/* Update table cell alignment */
+.category-breakdown td {
+  padding: 0.5rem;
+  border-bottom: 1px solid rgba(187, 10, 30, 0.3);
+  font-family: 'Share Tech Mono', monospace;
+  text-align: center; /* Center all cells */
+}
+
+/* First column (Category) can remain left-aligned if preferred */
+.category-breakdown td:first-child {
+  text-align: left;
+} 
