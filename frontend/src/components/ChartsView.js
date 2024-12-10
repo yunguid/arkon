@@ -333,38 +333,6 @@ const ChartsView = ({ summary }) => {
         ) : <p>No large expenses found.</p>}
       </div>
 
-      {/* EXPENSE CATEGORY BREAKDOWN (Donut Chart) */}
-      <div className="section">
-        <h3>Where Your Money Goes (Donut Chart)</h3>
-        <p>See how your spending breaks down across your top categories:</p>
-        {processedCategories.length > 0 ? (
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={processedCategories}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={100}
-                fill="#2C3E50"
-                paddingAngle={4}
-              >
-                {processedCategories.map((entry, index) => (
-                  <Cell 
-                    key={`cell-${index}`} 
-                    fill={COLORS[index % COLORS.length]} 
-                  />
-                ))}
-              </Pie>
-              <Tooltip formatter={(value, name) => [formatCurrency(value), name]} />
-              <Legend verticalAlign="bottom" height={36} />
-            </PieChart>
-          </ResponsiveContainer>
-        ) : <p>No categorized expenses available.</p>}
-      </div>
-
       {/* SPENDING DISTRIBUTION (Radar Chart) */}
       <div className="section">
         <h3>Category Distribution (Radar Chart)</h3>

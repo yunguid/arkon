@@ -227,4 +227,20 @@
 /* First column (Category) can remain left-aligned if preferred */
 .category-breakdown td:first-child {
   text-align: left;
+}
+
+.chart-row {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.chart-wrapper {
+  flex: 1;
+  min-width: 300px;
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 } 
