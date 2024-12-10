@@ -1,4 +1,9 @@
 fastapi
 uvicorn
-openai
-pandas 
+sqlalchemy
+psycopg2-binary
+python-multipart
+ell-ai
+anthropic
+python-dotenv==1.0.0
+polars>=0.18.0

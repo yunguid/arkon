@@ -1,206 +1,210 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException
+import io
+import os
+import json
+import logging
+import datetime
+from fastapi import FastAPI, File, UploadFile, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import polars as pl
-import io
-import ell as ell
-import anthropic
-import os
 from dotenv import load_dotenv
-import logging
+import ell
 from ell.types import Message
+from database import SessionLocal, FinancialDocument
+from sqlalchemy.orm import Session
 
-# Set up logging
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Load environment variables
 load_dotenv()
 
-# Validate API key presence
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 if not ANTHROPIC_API_KEY:
     raise ValueError("ANTHROPIC_API_KEY environment variable is not set")
 
 app = FastAPI()
 
-# CORS middleware setup
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "*"],  # More permissive for development
+    allow_origins=["http://localhost:3000"],  # adjust as needed
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"]
 )
 
-# Initialize Anthropic client once
-client = anthropic.Client(api_key=ANTHROPIC_API_KEY)
+ell.init(store='./logdir', autocommit=True, verbose=False)
 
-# ELL initialization (if needed)
-ell.init(
-    store='./logdir',
-    autocommit=True,
-    verbose=False
-)
-
-@ell.simple(
-    model="claude-3-5-sonnet-20241022",
-    client=client,
-    max_tokens=8000
-)
-def analyze_financial_data(financial_data: str) -> list[Message]:
-    """Analyze financial data and provide insights."""
-    return [
-        Message(
-            role="system",
-            content=
-            """
-            You will be analyzing financial data provided in CSV format. The data contains information about transactions, including dates, descriptions, and amounts in USD. Your task is to analyze this data, identify patterns, and provide insights to help the user understand their spending habits.
-
-            Follow these steps to analyze the data and provide insights:
-
-            1. Data Processing:
-            - Parse the CSV data, ensuring you correctly interpret the Date, Description, and Amount columns.
-            - Convert the Amount column to numerical values for calculations.
-
-            2. Spending Analysis:
-            - Calculate total spending for the given period.
-            - Identify the top 5 largest expenses.
-            - Determine average daily and monthly spending.
-            - Categorize expenses into broad categories (e.g., food, entertainment, utilities) based on the descriptions.
-
-            3. Provide Quantitative Insights:
-            - Present your findings in a clear, concise manner.
-            - Use specific numbers and percentages to support your insights.
-
-            4. Recommendations:
-            - After providing the quantitative analysis, adopt the tone of an elderly financier with extensive wisdom (e.g., Charlie Munger, Warren Buffet, or Jim Simons).
-            - Offer advice on how the user can save money and improve their financial habits.
-            - Base your recommendations on the patterns and insights you've identified in the data.
-
-            Present your analysis and recommendations in the following format:
-
-            
-
-            
-            [Provide overall spending analysis, including total spent, average daily/monthly spending, and top expenses]
-            
-
-            
-            [List 3-5 key insights derived from the data analysis]
-            
-
-            
-            [Provide recommendations and financial advice in the style of an experienced, wise investor]
-            
-            
-
-            Remember to be thorough in your analysis, provide specific numbers to support your insights, and offer practical, wise advice in the tone of an elderly financier.
-            """
-        ),
-        Message(
-            role="user",
-            content=f"""[Your detailed user prompt here with {financial_data} included]"""
-        )
-    ]
+def categorize_expenses_expression():
+    return (
+        pl.when(pl.col("Description").str.contains("GROCERY|SUPERMARKET|WHOLE FOODS|WALMART|COSTCO", literal=True))
+        .then(pl.lit("groceries"))
+        .when(pl.col("Description").str.contains("RESTAURANT|CAFE|DINER|EATERY", literal=True))
+        .then(pl.lit("dining out"))
+        .when(pl.col("Description").str.contains("UBER|LYFT|TRANSPORT|GAS|PETROL|SUBWAY", literal=True))
+        .then(pl.lit("transport"))
+        .when(pl.col("Description").str.contains("NETFLIX|HULU|SPOTIFY|AMAZON PRIME", literal=True))
+        .then(pl.lit("entertainment"))
+        .when(pl.col("Description").str.contains("RENT|MORTGAGE|UTILITIES|ELECTRIC|WATER|INTERNET|CABLE", literal=True))
+        .then(pl.lit("housing/utilities"))
+        .otherwise(pl.lit("other"))
+    )
 
 def process_financial_data(contents: bytes):
-    """
-    Process the CSV data using Polars and compute summary statistics.
-
-    Returns:
-        summary (dict): A dictionary containing summaries like total expenses,
-                        expenses by category, daily expenses, etc.
-    """
-    # Read CSV data into Polars DataFrame
     df = pl.read_csv(io.BytesIO(contents))
+    logger.info(f"Loaded DataFrame with columns: {df.columns}")
 
-    # Ensure columns are correctly typed
+    required_cols = {"Date", "Amount", "Description"}
+    if not required_cols.issubset(set(df.columns)):
+        raise ValueError(f"CSV must contain columns: {', '.join(required_cols)}")
+
     df = df.with_columns([
         pl.col("Date").str.strptime(pl.Date, format="%m/%d/%Y"),
         pl.col("Amount").cast(pl.Float64),
-        pl.col("Description").cast(pl.Utf8),
+        pl.col("Description").str.to_uppercase().str.strip_chars()
     ])
 
-    # Total expenses
-    total_expenses = df.select(pl.col("Amount").sum()).item()
-    logger.info(f"Total expenses: {total_expenses}\n\n")
+    df = df.with_columns([
+        categorize_expenses_expression().alias("Category")
+    ])
 
-    # Expenses by day
-    daily_expenses = df.group_by("Date").agg(pl.col("Amount").sum()).sort("Date")
-    logger.info(f"Daily expenses: {daily_expenses}\n\n")
+    date_series = df["Date"]
+    max_date = date_series.max()
+    min_date = date_series.min()
+    num_days = max((max_date - min_date).days + 1, 1)
 
-    # Expenses by description
-    expenses_by_description = df.group_by("Description").agg(pl.col("Amount").sum()).sort("Amount", descending=True)
-    logger.info(f"Expenses by description: {expenses_by_description}\n\n")
+    total_expenses = df["Amount"].sum()
 
-    # Add recurring transactions analysis
-    recurring_transactions = (
+    daily_expenses = (
+        df.group_by("Date")
+        .agg(pl.col("Amount").sum().alias("amount"))
+        .sort("Date")
+    ).to_dicts()
+    for d in daily_expenses:
+        d["date"] = d.pop("Date").strftime("%Y-%m-%d")
+
+    recurring = (
         df.group_by("Description")
         .agg([
             pl.col("Amount").count().alias("count"),
-            pl.col("Amount").abs().sum().alias("totalAmount"),
-            (pl.col("Amount").abs().sum() / pl.col("Amount").count()).alias("averageAmount")
+            pl.col("Amount").sum().alias("totalamount"),
+            (pl.col("Amount").sum() / pl.col("Amount").count()).alias("averageamount")
         ])
-        .filter(pl.col("count") > 1)  # Only keep items occurring more than once
-        .sort("count", descending=True)
-        .head(10)  # Top 10 recurring transactions
+        .filter(pl.col("count") > 1)
+        .sort("totalamount", descending=True)
+        .to_dicts()
     )
-    logger.info(f"Recurring transactions: {recurring_transactions}\n\n")
+    for r in recurring:
+        r["description"] = r.pop("Description")
 
-    # Update summary dictionary
+    cat_breakdown = (
+        df.group_by("Category")
+        .agg(pl.col("Amount").sum().alias("amount"))
+        .sort("amount", descending=True)
+        .to_dicts()
+    )
+    for c in cat_breakdown:
+        c["category"] = c.pop("Category")
+
+    top_5 = (
+        df.group_by("Description")
+        .agg(pl.col("Amount").sum().alias("amount"))
+        .sort("amount", descending=True)
+        .head(5)
+        .to_dicts()
+    )
+    for t in top_5:
+        t["description"] = t.pop("Description")
+
+    avg_daily = float(total_expenses / num_days)
+    avg_monthly = float(total_expenses / (num_days / 30))
+
     summary = {
-        "total_expenses": total_expenses,
-        "daily_expenses": daily_expenses.to_dicts(),
-        "expenses_by_description": expenses_by_description.to_dicts(),
-        "recurring_transactions": recurring_transactions.to_dicts()  # Add new data
+        "total_expenses": float(total_expenses),
+        "average_daily": avg_daily,
+        "average_monthly": avg_monthly,
+        "daily_expenses": daily_expenses,
+        "category_breakdown": cat_breakdown,
+        "top_5_expenses": top_5,
+        "recurring_transactions": recurring,
+        "date_range": {
+            "start": min_date.strftime("%Y-%m-%d"),
+            "end": max_date.strftime("%Y-%m-%d")
+        }
     }
-
     return summary
 
+class DateJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, (datetime.date, datetime.datetime)):
+            return obj.isoformat()
+        return super().default(obj)
+
 @app.post("/upload")
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(file: UploadFile = File(...), db: Session = Depends(get_db)):
     logger.info(f"Received file upload: {file.filename}")
-    
+
     if not file.filename.endswith('.csv'):
         raise HTTPException(status_code=400, detail="File must be a CSV")
-    
-    try:
-        contents = await file.read()
-        
-        # Immediately process data for visualization
-        summary = process_financial_data(contents)
-        
-        # Return initial response with summary data
-        return {
-            "status": "processing",
-            "summary": summary,
-            "message": "Charts data ready. AI analysis in progress..."
-        }
-        
-    except Exception as e:
-        logger.error(f"Error processing file: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
 
-# @app.post("/analyze")
-# async def analyze_file(file: UploadFile = File(...)):
-#     try:
-#         contents = await file.read()
-#         df = pl.read_csv(io.BytesIO(contents))
-#         csv_data = df.write_csv()
-        
-#         # Perform AI analysis
-#         insights = analyze_financial_data(csv_data)
-        
-#         return {
-#             "status": "complete",
-#             "insights": insights
-#         }
-        
-#     except Exception as e:
-#         logger.error(f"Error analyzing file: {str(e)}", exc_info=True)
-#         raise HTTPException(status_code=500, detail=str(e))
+    contents = await file.read()
+    if len(contents) == 0:
+        raise HTTPException(status_code=400, detail="Empty file uploaded")
+
+    # If filename exists, rename it
+    base_name, ext = os.path.splitext(file.filename)
+    new_filename = file.filename
+    doc_count = db.query(FinancialDocument).filter(FinancialDocument.filename == file.filename).count()
+    if doc_count > 0:
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        new_filename = f"{base_name}_{timestamp}{ext}"
+
+    summary = process_financial_data(contents)
+
+    doc = FinancialDocument(
+        filename=new_filename,
+        summary_json=json.dumps(summary, cls=DateJSONEncoder)
+    )
+    db.add(doc)
+    db.commit()
+    db.refresh(doc)
+
+    return {
+        "status": "success",
+        "file_id": doc.id,
+        "summary": summary,
+        "filename": new_filename
+    }
+
+@app.get("/files")
+def list_files(db: Session = Depends(get_db)):
+    docs = db.query(FinancialDocument).order_by(FinancialDocument.upload_date.desc()).all()
+    return [
+        {
+            "id": doc.id,
+            "filename": doc.filename,
+            "upload_date": doc.upload_date.isoformat() if doc.upload_date else None
+        }
+        for doc in docs
+    ]
+
+@app.get("/file/{file_id}")
+def get_file(file_id: int, db: Session = Depends(get_db)):
+    doc = db.query(FinancialDocument).filter(FinancialDocument.id == file_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    summary = json.loads(doc.summary_json)
+    return {
+        "status": "success",
+        "summary": summary
+    }
 
 if __name__ == "__main__":
     logger.info("Starting FastAPI server...")
