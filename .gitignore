@@ -15,3 +15,5 @@ logdir/
 # Build
 build/
 dist/
+
+backend/financial_data.db
