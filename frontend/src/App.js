@@ -4,6 +4,7 @@ import UploadForm from './components/UploadForm';
 import ChartsView from './components/ChartsView';
 import './App.css';
 import * as PIXI from 'pixi.js';
+import StocksView from './components/StocksView';
 
 function App() {
   const [currentSummary, setCurrentSummary] = useState(null);
@@ -13,6 +14,7 @@ function App() {
   const canvasRef = useRef(null);
   const appRef = useRef(null);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  const [view, setView] = useState('financial');
 
   useEffect(() => {
     async function initPixi() {
@@ -174,18 +176,36 @@ function App() {
   return (
     <div className="App">
       <div className="webgl-container" ref={canvasRef}></div>
-      <div className="content-wrapper">
-        <DocumentsList 
-          onSelect={handleSelectFile} 
-          refreshTrigger={refreshDocs} 
-          selectedFileId={selectedFileId} 
-        />
-        <div className="main-content">
-          <UploadForm onNewSummary={handleNewSummary} />
-          {error && <div className="error-message">{error}</div>}
-          {currentSummary && <ChartsView summary={currentSummary} />}
+      <nav className="main-nav">
+        <button 
+          className={`nav-btn ${view === 'financial' ? 'active' : ''}`}
+          onClick={() => setView('financial')}
+        >
+          Financial Analysis
+        </button>
+        <button 
+          className={`nav-btn ${view === 'stocks' ? 'active' : ''}`}
+          onClick={() => setView('stocks')}
+        >
+          Stock Performance
+        </button>
+      </nav>
+      {view === 'financial' ? (
+        <div className="content-wrapper">
+          <DocumentsList 
+            onSelect={handleSelectFile} 
+            refreshTrigger={refreshDocs} 
+            selectedFileId={selectedFileId} 
+          />
+          <div className="main-content">
+            <UploadForm onNewSummary={handleNewSummary} />
+            {error && <div className="error-message">{error}</div>}
+            {currentSummary && <ChartsView summary={currentSummary} />}
+          </div>
         </div>
-      </div>
+      ) : (
+        <StocksView />
+      )}
     </div>
   );
 }

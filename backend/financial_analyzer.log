@@ -1,0 +1,73 @@
+2024-12-09 20:24:58,002 - __main__ - INFO - Starting FastAPI server...
+2024-12-09 20:25:18,847 - __main__ - INFO - Received file upload: july_august_2024.csv
+2024-12-09 20:25:18,847 - __main__ - INFO - File size: 5060 bytes
+2024-12-09 20:25:18,847 - __main__ - DEBUG - Checking for duplicate filename
+2024-12-09 20:25:18,849 - __main__ - DEBUG - Processing financial data
+2024-12-09 20:25:18,849 - __main__ - INFO - Starting financial data processing
+2024-12-09 20:25:18,850 - __main__ - INFO - Loaded DataFrame with columns: ['Date', 'Receipt', 'Description', 'Amount']
+2024-12-09 20:25:18,850 - __main__ - INFO - Initial data shape: (83, 4)
+2024-12-09 20:25:18,850 - __main__ - DEBUG - Cleaning and parsing data
+2024-12-09 20:25:18,851 - __main__ - INFO - Data cleaning completed
+2024-12-09 20:25:18,851 - __main__ - DEBUG - Adding basic categories
+2024-12-09 20:25:18,852 - __main__ - INFO - Basic categorization completed in 0.00s
+2024-12-09 20:25:18,853 - __main__ - INFO - Category distribution:
+2024-12-09 20:25:18,853 - __main__ - INFO -   Transport: 28 transactions
+2024-12-09 20:25:18,853 - __main__ - INFO -   Dining: 1 transactions
+2024-12-09 20:25:18,854 - __main__ - INFO -   Entertainment: 1 transactions
+2024-12-09 20:25:18,854 - __main__ - INFO -   Other: 53 transactions
+2024-12-09 20:25:18,854 - __main__ - INFO - Attempting enhanced categorization with ell
+2024-12-09 20:25:49,184 - __main__ - WARNING - Enhanced categorization failed: peer closed connection without sending complete message body (incomplete chunked read)
+2024-12-09 20:25:49,184 - __main__ - DEBUG - Calculating metrics
+2024-12-09 20:25:49,185 - __main__ - INFO - Date range: 2024-07-18 to 2024-08-15 (29 days)
+2024-12-09 20:25:49,185 - __main__ - INFO - Total expenses: $7,532.17
+2024-12-09 20:25:49,186 - __main__ - DEBUG - Processing daily expenses
+2024-12-09 20:25:49,188 - __main__ - INFO - Processed 27 days of transactions
+2024-12-09 20:25:49,188 - __main__ - DEBUG - Creating category breakdown
+2024-12-09 20:25:49,190 - __main__ - INFO - Financial data processing completed in 30.34 seconds
+2024-12-09 20:25:49,190 - __main__ - DEBUG - Saving to database
+2024-12-09 20:25:49,197 - __main__ - INFO - File saved to database with ID: 1
+2024-12-09 20:25:49,198 - __main__ - INFO - Upload completed in 30.35 seconds
+2024-12-09 20:36:46,441 - __main__ - INFO - Starting FastAPI server...
+2024-12-09 20:37:01,456 - __main__ - INFO - Received file upload: july_august_2024.csv
+2024-12-09 20:37:01,462 - __main__ - INFO - Starting financial data processing
+2024-12-09 20:37:01,464 - __main__ - INFO - Loaded DataFrame with columns: ['Date', 'Receipt', 'Description', 'Amount']
+2024-12-09 20:37:01,464 - __main__ - INFO - Initial data shape: (83, 4)
+2024-12-09 20:37:01,465 - __main__ - INFO - Data cleaning completed
+2024-12-09 20:37:01,473 - __main__ - ERROR - Error processing file: 'Expr' object has no attribute 'cumsum'
+Traceback (most recent call last):
+  File "/Users/luke/cursor-projs/arkon/backend/main.py", line 232, in process_financial_data
+    daily_df = daily_df.with_columns(pl.col("amount").cumsum().alias("cumulative"))
+                                     ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'Expr' object has no attribute 'cumsum'. Did you mean: 'cum_sum'?
+2024-12-09 20:37:01,475 - __main__ - ERROR - Upload error: 500: 'Expr' object has no attribute 'cumsum'
+Traceback (most recent call last):
+  File "/Users/luke/cursor-projs/arkon/backend/main.py", line 232, in process_financial_data
+    daily_df = daily_df.with_columns(pl.col("amount").cumsum().alias("cumulative"))
+                                     ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'Expr' object has no attribute 'cumsum'. Did you mean: 'cum_sum'?
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/luke/cursor-projs/arkon/backend/main.py", line 310, in upload_file
+    summary = process_financial_data(contents)
+  File "/Users/luke/cursor-projs/arkon/backend/main.py", line 276, in process_financial_data
+    raise HTTPException(status_code=500, detail=str(e))
+fastapi.exceptions.HTTPException: 500: 'Expr' object has no attribute 'cumsum'
+2024-12-09 20:40:10,612 - __main__ - INFO - Starting FastAPI server...
+2024-12-09 20:40:17,941 - __main__ - INFO - Received file upload: june_july_2024.csv
+2024-12-09 20:40:17,944 - __main__ - INFO - Starting financial data processing
+2024-12-09 20:40:17,948 - __main__ - INFO - Loaded DataFrame with columns: ['Date', 'Receipt', 'Description', 'Amount']
+2024-12-09 20:40:17,949 - __main__ - INFO - Initial data shape: (77, 4)
+2024-12-09 20:40:17,951 - __main__ - INFO - Data cleaning completed
+2024-12-09 20:40:17,964 - __main__ - INFO - Data processing complete
+2024-12-09 20:40:17,967 - __main__ - INFO - File saved with ID: 1
+2024-12-09 20:40:17,967 - __main__ - INFO - Upload completed in 0.03 seconds
+2024-12-09 20:40:29,308 - __main__ - INFO - Received file upload: oct_nov_2024.csv
+2024-12-09 20:40:29,311 - __main__ - INFO - Starting financial data processing
+2024-12-09 20:40:29,311 - __main__ - INFO - Loaded DataFrame with columns: ['Date', 'Receipt', 'Description', 'Amount']
+2024-12-09 20:40:29,311 - __main__ - INFO - Initial data shape: (91, 4)
+2024-12-09 20:40:29,312 - __main__ - INFO - Data cleaning completed
+2024-12-09 20:40:29,317 - __main__ - INFO - Data processing complete
+2024-12-09 20:40:29,320 - __main__ - INFO - File saved with ID: 2
+2024-12-09 20:40:29,320 - __main__ - INFO - Upload completed in 0.01 seconds
