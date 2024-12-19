@@ -6,7 +6,7 @@ import Watchlist from './Watchlist';
 import StockAnalysisHistory from './StockAnalysisHistory';
 
 const API_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://yunguid.github.io/arkon'  // Changed from incorrect URL
+  ? 'https://api.example.com'  // This will be replaced later with real backend
   : 'http://localhost:8000';
 
 function StocksView() {
@@ -23,16 +23,7 @@ function StocksView() {
   const fetchPrice = async () => {
     if (!ticker) return;
     try {
-      const now = Date.now();
-      if (lastFetchTime && now - lastFetchTime < 30000) {
-        return;
-      }
-      
-      const res = await fetch(`${API_URL}/stock_price?symbol=${encodeURIComponent(ticker)}`);
-      if (!res.ok) throw new Error('Failed to fetch price');
-      const data = await res.json();
-      setLivePrice(data.price);
-      setLastFetchTime(now);
+      setLivePrice(100.00); // Mock price
       setError(null);
     } catch (err) {
       setError(err.message);
