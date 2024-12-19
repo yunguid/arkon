@@ -6,7 +6,7 @@ import Watchlist from './Watchlist';
 import StockAnalysisHistory from './StockAnalysisHistory';
 
 const API_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://your-api-url.com'  // Replace with your API URL when deployed
+  ? 'https://your-api-url.https://github.com/yunguid/arkon.git'  // Replace with your API URL when deployed
   : 'http://localhost:8000';
 
 function StocksView() {
