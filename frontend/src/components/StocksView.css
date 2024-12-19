@@ -54,4 +54,19 @@
 .error-message {
   color: #e74c3c;
   margin: 1rem 0;
+}
+
+.stocks-layout {
+  display: flex;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.stocks-sidebar {
+  width: 300px;
+  flex-shrink: 0;
+}
+
+.stocks-main {
+  flex-grow: 1;
 } 

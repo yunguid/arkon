@@ -1,7 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, BarChart, Bar, Legend } from 'recharts';
+import { ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip } from 'recharts';
 import './StocksView.css';
 import StockNews from './StockNews';
+import Watchlist from './Watchlist';
+import StockAnalysisHistory from './StockAnalysisHistory';
+
+const API_URL = process.env.NODE_ENV === 'production' 
+  ? 'https://your-api-url.com'  // Replace with your API URL when deployed
+  : 'http://localhost:8000';
 
 function StocksView() {
   const [ticker, setTicker] = useState('');
@@ -11,14 +17,22 @@ function StocksView() {
   const [stockDataSummary, setStockDataSummary] = useState(null);
   const [loadingUpload, setLoadingUpload] = useState(false);
   const fileInputRef = useRef(null);
+  const [isAnalyzingAll, setIsAnalyzingAll] = useState(false);
+  const [lastFetchTime, setLastFetchTime] = useState(null);
 
   const fetchPrice = async () => {
     if (!ticker) return;
     try {
-      const res = await fetch(`http://localhost:8000/stock_price?symbol=${encodeURIComponent(ticker)}`);
+      const now = Date.now();
+      if (lastFetchTime && now - lastFetchTime < 30000) {
+        return;
+      }
+      
+      const res = await fetch(`${API_URL}/stock_price?symbol=${encodeURIComponent(ticker)}`);
       if (!res.ok) throw new Error('Failed to fetch price');
       const data = await res.json();
       setLivePrice(data.price);
+      setLastFetchTime(now);
       setError(null);
     } catch (err) {
       setError(err.message);
@@ -39,8 +53,10 @@ function StocksView() {
   };
 
   useEffect(() => {
-    return () => stopUpdates();
-  }, []);
+    return () => {
+      stopUpdates();
+    };
+  }, [stopUpdates]);
 
   const handleUpload = async (e) => {
     e.preventDefault();
@@ -52,7 +68,7 @@ function StocksView() {
     formData.append('file', file);
 
     try {
-      const res = await fetch('http://localhost:8000/upload_stock_data', {
+      const res = await fetch(`${API_URL}/upload_stock_data`, {
         method: 'POST',
         body: formData,
       });
@@ -67,29 +83,94 @@ function StocksView() {
     }
   };
 
+  const handleSelectStock = (symbol) => {
+    setTicker(symbol);
+  };
+
+  const handleAnalyzeAll = async () => {
+    setIsAnalyzingAll(true);
+    try {
+      const response = await fetch(`${API_URL}/watchlist/analyze`, {
+        method: 'POST'
+      });
+      if (!response.ok) throw new Error('Failed to analyze watchlist');
+      const data = await response.json();
+      if (data.status === 'complete') {
+        setError(null);
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsAnalyzingAll(false);
+    }
+  };
+
+  const addToWatchlist = async () => {
+    if (!ticker) return;
+    try {
+      const response = await fetch(`${API_URL}/watchlist/${ticker}`, {
+        method: 'POST'
+      });
+      if (!response.ok) throw new Error('Failed to add to watchlist');
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const fetchNews = async () => {
+    if (!ticker) return;
+    try {
+      const response = await fetch(`${API_URL}/stock/${ticker}/news`);
+      if (!response.ok) throw new Error('Failed to fetch news');
+      const data = await response.json();
+      // You can handle the news data here if needed
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   return (
     <div className="stocks-view">
-      {/* Stock input section */}
-      <div className="stock-input-section">
-        <h2>Stock Performance</h2>
-        <div className="input-group">
-          <input 
-            type="text" 
-            placeholder="Enter ticker (e.g. AAPL)" 
-            value={ticker}
-            onChange={(e) => setTicker(e.target.value.toUpperCase())}
+      <div className="stocks-layout">
+        <aside className="stocks-sidebar">
+          <Watchlist 
+            onSelectStock={handleSelectStock}
+            onAnalyzeAll={handleAnalyzeAll}
+            isAnalyzing={isAnalyzingAll}
           />
-          <button onClick={fetchPrice}>Get Price</button>
-          <button onClick={startUpdates} disabled={!ticker}>Auto-Refresh</button>
-          <button onClick={stopUpdates}>Stop Refresh</button>
-        </div>
-        {error && <div className="error-message">{error}</div>}
-        {livePrice && (
-          <div className="live-price">
-            {ticker}: ${livePrice.toFixed(2)}
+        </aside>
+        
+        <main className="stocks-main">
+          {/* Stock input section */}
+          <div className="stock-input-section">
+            <h2>Stock Performance</h2>
+            <div className="input-group">
+              <input 
+                type="text" 
+                placeholder="Enter ticker (e.g. AAPL)" 
+                value={ticker}
+                onChange={(e) => setTicker(e.target.value.toUpperCase())}
+              />
+              <button onClick={fetchPrice}>Get Price</button>
+              <button onClick={addToWatchlist}>Add to Watchlist</button>
+              <button onClick={startUpdates} disabled={!ticker}>Auto-Refresh</button>
+              <button onClick={stopUpdates}>Stop Refresh</button>
+            </div>
+            {error && <div className="error-message">{error}</div>}
+            {livePrice && (
+              <div className="live-price">
+                {ticker}: ${livePrice.toFixed(2)}
+              </div>
+            )}
+            {ticker && (
+              <>
+                <StockNews symbol={ticker} />
+                <StockAnalysisHistory symbol={ticker} />
+              </>
+            )}
           </div>
-        )}
-        {ticker && <StockNews symbol={ticker} />}
+        </main>
       </div>
 
       {/* Upload section */}

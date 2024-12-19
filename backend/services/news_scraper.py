@@ -1,14 +1,14 @@
 import os
 from datetime import datetime
 import httpx
-from typing import Dict, List
+from typing import Dict, List, Optional
 import json
 import asyncio
 from bs4 import BeautifulSoup
 import yfinance as yf
 import logging
 from openai import OpenAI
-from database import StockNews
+from database import StockNews, StockAnalysisHistory
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -20,15 +20,51 @@ class PerplexityNewsAnalyzer:
             base_url="https://api.perplexity.ai"
         )
     
+    def _clean_json_string(self, json_str: str) -> str:
+        """Clean and validate JSON string"""
+        # Remove markdown backticks and 'json' tag
+        json_str = json_str.replace('```json', '').replace('```', '').strip()
+        
+        # Fix common JSON issues
+        json_str = json_str.replace('\n', ' ')  # Remove newlines
+        json_str = json_str.replace('\\', '\\\\')  # Escape backslashes
+        
+        # Fix trailing commas (common AI error)
+        json_str = json_str.replace(',}', '}').replace(',]', ']')
+        
+        return json_str
+
     async def analyze_stock_news(self, symbol: str, articles: List[Dict]) -> Dict:
         try:
             logger.info(f"Starting Perplexity analysis for {symbol}")
-            prompt = self._create_analysis_prompt(symbol, articles)
+            
+            # Update prompt to be more strict about JSON format
+            prompt = f"""
+            Analyze these news articles about {symbol} and return a JSON object.
+            
+            Rules:
+            1. Response must be ONLY valid JSON
+            2. No trailing commas
+            3. All strings must be properly escaped
+            4. No comments or additional text
+            
+            Required format:
+            {{
+                "key_developments": "Brief summary",
+                "market_sentiment": "positive/negative/neutral",
+                "price_impact": "Brief analysis",
+                "risks": ["Risk 1", "Risk 2"],
+                "expert_quotes": ["Quote 1", "Quote 2"],
+                "summary": "Overall summary"
+            }}
+            
+            Articles: {json.dumps(articles)}
+            """
             
             response = self.client.chat.completions.create(
                 model="llama-3.1-sonar-huge-128k-online",
                 messages=[
-                    {"role": "system", "content": "You are a financial analyst. Provide concise JSON responses."},
+                    {"role": "system", "content": "You are a financial analyst. Return only valid JSON."},
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.1,
@@ -36,31 +72,40 @@ class PerplexityNewsAnalyzer:
             )
             
             content = response.choices[0].message.content
-            logger.info("Raw API Response Content:")
-            logger.info("-" * 80)
-            logger.info(content)
-            logger.info("-" * 80)
+            logger.debug(f"Raw API response: {content}")
             
-            # Extract JSON from response
-            json_start = content.find('{')
-            json_end = content.rfind('}') + 1
-            if json_start == -1 or json_end == 0:
-                raise ValueError("No JSON object found in response")
-                
-            json_str = content[json_start:json_end]
-            
-            # Parse and validate
+            # Clean and parse JSON
             try:
-                result = json.loads(json_str)
-                required_fields = ["key_developments", "market_sentiment", "price_impact", "risks", "expert_quotes", "summary"]
-                for field in required_fields:
-                    if field not in result:
-                        result[field] = "Not available" if field not in ["risks", "expert_quotes"] else []
+                cleaned_content = self._clean_json_string(content)
+                result = json.loads(cleaned_content)
+                
+                # Validate required fields
+                required_fields = {
+                    "key_developments": str,
+                    "market_sentiment": str,
+                    "price_impact": str,
+                    "risks": list,
+                    "expert_quotes": list,
+                    "summary": str
+                }
+                
+                for field, field_type in required_fields.items():
+                    if field not in result or not isinstance(result[field], field_type):
+                        result[field] = [] if field_type == list else "Not available"
+                
                 return result
                 
             except json.JSONDecodeError as e:
                 logger.error(f"JSON parse error: {e}")
-                raise ValueError(f"Invalid JSON format: {e}")
+                # Return a valid fallback structure
+                return {
+                    "key_developments": "Error parsing analysis",
+                    "market_sentiment": "neutral",
+                    "price_impact": "Analysis unavailable",
+                    "risks": ["Error processing risks"],
+                    "expert_quotes": [],
+                    "summary": f"Failed to analyze news content: {str(e)}"
+                }
                 
         except Exception as e:
             logger.error(f"Analysis failed: {str(e)}")
@@ -94,12 +139,25 @@ class NewsCollector:
     def __init__(self, db, analyzer):
         self.db = db
         self.analyzer = analyzer
-    
-    async def collect_daily_news(self, symbol: str):
+        self._news_cache = {}
+        self._cache_ttl = 300  # 5 minutes
+
+    async def get_news(self, symbol: str) -> List[Dict]:
+        now = datetime.now().timestamp()
+        if symbol in self._news_cache:
+            cached_time, cached_news = self._news_cache[symbol]
+            if now - cached_time < self._cache_ttl:
+                return cached_news
+
+        ticker = yf.Ticker(symbol)
+        news = ticker.news[:5] if ticker.news else []
+        self._news_cache[symbol] = (now, news)
+        return news
+
+    async def collect_daily_news(self, symbol: str) -> Optional[StockNews]:
         try:
             logger.info(f"Starting news collection for {symbol}")
-            ticker = yf.Ticker(symbol)
-            news_data = ticker.news
+            news_data = await self.get_news(symbol)
             
             logger.info(f"Found {len(news_data) if news_data else 0} news items for {symbol}")
             
@@ -143,6 +201,16 @@ class NewsCollector:
             self.db.add(news_entry)
             self.db.commit()
             logger.info(f"Successfully stored news analysis for {symbol}")
+            
+            # Store in history
+            history_entry = StockAnalysisHistory(
+                symbol=symbol,
+                perplexity_summary=analysis,
+                sentiment_score=sentiment_score,
+                source_urls=[a["url"] for a in formatted_articles]
+            )
+            self.db.add(history_entry)
+            self.db.commit()
             
             return news_entry
             

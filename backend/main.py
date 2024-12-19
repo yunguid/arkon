@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import polars as pl
 from dotenv import load_dotenv
-from database import SessionLocal, FinancialDocument, StockNews
+from database import SessionLocal, FinancialDocument, StockNews, Watchlist, StockAnalysisHistory
 from sqlalchemy.orm import Session
 import ell
 from ell.types import Message
@@ -16,6 +16,7 @@ from datetime import date, datetime
 import yfinance as yf
 from services.news_scraper import PerplexityNewsAnalyzer, NewsCollector
 from services.news_scheduler import NewsScheduler
+from functools import lru_cache
 
 class DateJSONEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -311,21 +312,21 @@ def get_file(file_id: int, db: Session = Depends(get_db)):
         "summary": summary
     }
 
+@lru_cache(maxsize=100)
+def get_cached_price(symbol: str, timestamp: int) -> float:
+    """Cache price data for 1 minute"""
+    ticker = yf.Ticker(symbol)
+    data = ticker.history(period="1d")
+    return float(data['Close'].iloc[-1])
+
 @app.get("/stock_price")
 async def get_stock_price(symbol: str):
-    """Fetch current stock price from Yahoo Finance."""
-    if not symbol:
-        raise HTTPException(status_code=400, detail="Symbol is required")
-    
+    """Fetch current stock price with caching"""
     try:
-        ticker = yf.Ticker(symbol)
-        data = ticker.history(period="1d")
-        if data.empty:
-            raise HTTPException(status_code=404, detail="No data found for symbol")
-        
-        current_price = float(data['Close'].iloc[-1])
-        return {"symbol": symbol, "price": current_price}
-    
+        # Use 1-minute timestamp for cache key
+        timestamp = int(datetime.now().timestamp() / 60)
+        price = get_cached_price(symbol, timestamp)
+        return {"symbol": symbol, "price": price}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -439,6 +440,111 @@ async def trigger_news_collection(
     except Exception as e:
         logger.error(f"Error collecting news for {symbol}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/watchlist")
+async def get_watchlist(db: Session = Depends(get_db)):
+    """Get user's watchlist"""
+    try:
+        watchlist = db.query(Watchlist).all()
+        return {
+            "watchlist": [
+                {
+                    "symbol": item.symbol,
+                    "added_date": item.added_date,
+                    "last_analysis": item.last_analysis
+                }
+                for item in watchlist
+            ]
+        }
+    except Exception as e:
+        logger.error(f"Error fetching watchlist: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/watchlist/{symbol}")
+async def add_to_watchlist(symbol: str, db: Session = Depends(get_db)):
+    existing = db.query(Watchlist).filter(Watchlist.symbol == symbol).first()
+    if existing:
+        return {"status": "exists", "message": f"{symbol} already in watchlist"}
+    
+    watchlist_item = Watchlist(symbol=symbol)
+    db.add(watchlist_item)
+    db.commit()
+    return {"status": "success", "message": f"Added {symbol} to watchlist"}
+
+@app.delete("/watchlist/{symbol}")
+async def remove_from_watchlist(symbol: str, db: Session = Depends(get_db)):
+    db.query(Watchlist).filter(Watchlist.symbol == symbol).delete()
+    db.commit()
+    return {"status": "success", "message": f"Removed {symbol} from watchlist"}
+
+@app.post("/watchlist/analyze")
+async def analyze_watchlist(db: Session = Depends(get_db)):
+    """Analyze all stocks in watchlist"""
+    try:
+        watchlist = db.query(Watchlist).all()
+        if not watchlist:
+            return {"status": "warning", "message": "Watchlist is empty"}
+            
+        analyzer = PerplexityNewsAnalyzer(os.getenv("PERPLEXITY_API_KEY"))
+        collector = NewsCollector(db, analyzer)
+        
+        results = []
+        for item in watchlist:
+            try:
+                logger.info(f"Analyzing {item.symbol}")
+                news_entry = await collector.collect_daily_news(item.symbol)
+                
+                # Update last_analysis timestamp
+                item.last_analysis = datetime.utcnow()
+                db.commit()
+                
+                if news_entry:
+                    results.append({
+                        "symbol": item.symbol,
+                        "status": "success"
+                    })
+            except Exception as e:
+                logger.error(f"Error analyzing {item.symbol}: {e}")
+                results.append({
+                    "symbol": item.symbol,
+                    "status": "error",
+                    "error": str(e)
+                })
+                
+        return {
+            "status": "complete",
+            "results": results
+        }
+        
+    except Exception as e:
+        logger.error(f"Batch analysis failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/stock/{symbol}/analysis_history")
+async def get_analysis_history(
+    symbol: str,
+    limit: int = 10,
+    db: Session = Depends(get_db)
+):
+    """Get historical analyses for a stock"""
+    history = db.query(StockAnalysisHistory)\
+        .filter(StockAnalysisHistory.symbol == symbol)\
+        .order_by(StockAnalysisHistory.analysis_date.desc())\
+        .limit(limit)\
+        .all()
+        
+    return {
+        "symbol": symbol,
+        "history": [
+            {
+                "date": h.analysis_date,
+                "summary": h.perplexity_summary,
+                "sentiment": h.sentiment_score,
+                "sources": h.source_urls
+            }
+            for h in history
+        ]
+    }
 
 if __name__ == "__main__":
     logger.info("Starting FastAPI server...")

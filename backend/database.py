@@ -32,6 +32,31 @@ class StockNews(Base):
     def __repr__(self):
         return f"<StockNews(symbol='{self.symbol}', date='{self.date}')>"
 
+class Watchlist(Base):
+    __tablename__ = "watchlists"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, index=True)  # For future auth
+    symbol = Column(String, index=True)
+    added_date = Column(DateTime, default=datetime.utcnow)
+    last_analysis = Column(DateTime, nullable=True)
+    
+    def __repr__(self):
+        return f"<Watchlist(symbol='{self.symbol}')>"
+
+class StockAnalysisHistory(Base):
+    __tablename__ = "stock_analysis_history"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    symbol = Column(String, index=True)
+    analysis_date = Column(DateTime, default=datetime.utcnow)
+    perplexity_summary = Column(JSON)
+    sentiment_score = Column(Float)
+    source_urls = Column(JSON)
+    
+    def __repr__(self):
+        return f"<StockAnalysisHistory(symbol='{self.symbol}', date='{self.analysis_date}')>"
+
 # Move this to a separate initialization script
 if __name__ == '__main__':
     Base.metadata.create_all(bind=engine) 
