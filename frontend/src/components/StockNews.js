@@ -1,156 +1,98 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import './StockNews.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 function StockNews({ symbol }) {
     const [news, setNews] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [status, setStatus] = useState('');
-    const [isCollecting, setIsCollecting] = useState(false);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-    const fetchNews = useCallback(async () => {
+    const analyzeLatestNews = async () => {
         try {
-            setStatus('Fetching news data...');
-            const response = await fetch(`${API_URL}/stock/${symbol}/news`);
-            if (!response.ok) throw new Error('Failed to fetch news');
-            const data = await response.json();
-            setNews(data.news);
-            setError(null);
-            setStatus('');
-        } catch (err) {
-            console.error('Fetch Error:', err);
-            setError(err.message);
-            setStatus('Error fetching news');
-        } finally {
-            setLoading(false);
-        }
-    }, [symbol]);
-
-    const triggerNewsCollection = async () => {
-        try {
-            setIsCollecting(true);
-            setStatus('Initiating news collection...');
+            setIsAnalyzing(true);
+            setLoading(true);
             
             const response = await fetch(`${API_URL}/stock/${symbol}/collect_news`, {
                 method: 'POST'
             });
             
-            const data = await response.json();
-            console.log('Collection Response:', data);
-            
             if (!response.ok) {
-                throw new Error(data.detail || 'Failed to trigger news collection');
+                throw new Error('Failed to analyze news');
             }
             
-            setStatus('News collection completed. Fetching results...');
-            await fetchNews();
+            const data = await response.json();
+            setNews(data.news);
             
         } catch (err) {
-            console.error('Collection Error:', err);
-            setError(`Collection failed: ${err.message}`);
-            setStatus('Error during news collection. Please try again.');
+            setError(err.message);
         } finally {
-            setIsCollecting(false);
+            setIsAnalyzing(false);
+            setLoading(false);
         }
     };
-
-    useEffect(() => {
-        console.log('Symbol changed:', symbol);
-        if (symbol) {
-            fetchNews();
-        }
-    }, [symbol, fetchNews]);
-
-    console.log('Current State:', {
-        news,
-        loading,
-        error,
-        status,
-        isCollecting
-    });
 
     return (
         <div className="stock-news">
             <div className="news-header">
                 <h3>Latest News Analysis</h3>
                 <button 
-                    onClick={triggerNewsCollection}
-                    disabled={isCollecting}
+                    onClick={analyzeLatestNews}
+                    disabled={isAnalyzing}
                     className="collect-news-btn"
                 >
-                    {isCollecting ? 'Collecting...' : 'Analyze Latest News'}
+                    {isAnalyzing ? 'Analyzing...' : 'Analyze Latest News'}
                 </button>
             </div>
             
-            {status && <div className="status-message">{status}</div>}
             {error && <div className="error-message">{error}</div>}
             
             {loading ? (
-                <div className="loading">Loading news analysis...</div>
-            ) : !news || news.length === 0 ? (
+                <div className="loading">Analyzing latest news...</div>
+            ) : !news ? (
                 <div className="no-news">
-                    <p>No news analysis available.</p>
-                    <p>Click the button above to analyze latest news.</p>
+                    <p>Click above to analyze latest news</p>
                 </div>
             ) : (
-                <div>
-                    {news.map((item, index) => (
-                        <div key={index} className="news-item">
-                            <div className="news-header">
-                                <div className="news-date">
-                                    {new Date(item.date).toLocaleDateString()}
+                <div className="news-item">
+                    <div className="news-content">
+                        <p>{news.summary.summary}</p>
+                        <div className="key-points">
+                            <strong>Key Developments:</strong>
+                            <p>{news.summary.key_developments}</p>
+                            <strong>Price Impact:</strong>
+                            <p>{news.summary.price_impact}</p>
+                            {news.summary.risks && news.summary.risks.length > 0 && (
+                                <div>
+                                    <strong>Risks:</strong>
+                                    <ul>
+                                        {news.summary.risks.map((risk, i) => (
+                                            <li key={i}>{risk}</li>
+                                        ))}
+                                    </ul>
                                 </div>
-                                <div className="sentiment">
-                                    Sentiment: {item.sentiment > 0 ? 'Positive' : 
-                                              item.sentiment < 0 ? 'Negative' : 'Neutral'}
-                                </div>
-                            </div>
-                            <div className="news-content">
-                                <p className="summary">
-                                    {item.summary?.summary || 
-                                     item.summary?.key_developments || 
-                                     "No analysis available"}
-                                </p>
-                                <div className="key-points">
-                                    {item.summary?.risks?.length > 0 && (
-                                        <div className="risks">
-                                            <strong>Risks:</strong>
-                                            <ul>
-                                                {item.summary.risks.map((risk, i) => (
-                                                    <li key={i}>{risk}</li>
-                                                ))}
-                                            </ul>
-                                        </div>
-                                    )}
-                                    {item.summary?.price_impact && (
-                                        <div className="impact">
-                                            <strong>Impact:</strong> {item.summary.price_impact}
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="sources">
-                                    <div className="source-tooltip-container">
-                                        <small>Sources: {item.sources?.length || 0} articles analyzed</small>
-                                        {item.sources?.length > 0 && (
-                                            <div className="source-tooltip">
-                                                <ul>
-                                                    {item.sources.map((url, i) => (
-                                                        <li key={i}>
-                                                            <a href={url} target="_blank" rel="noopener noreferrer">
-                                                                {new URL(url).hostname.replace('www.', '')}
-                                                            </a>
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
+                            )}
                         </div>
-                    ))}
+                        {news.source_urls && news.source_urls.length > 0 && (
+                            <div className="source-tooltip-container">
+                                <div className="sources">
+                                    <small>Sources: {news.source_urls.length} articles analyzed</small>
+                                </div>
+                                <div className="source-tooltip">
+                                    <ul>
+                                        {news.source_urls.map((url, i) => (
+                                            <li key={i}>
+                                                <a href={url} target="_blank" rel="noopener noreferrer">
+                                                    Source {i + 1}
+                                                </a>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
         </div>

@@ -44,7 +44,6 @@ class PerplexityNewsAnalyzer:
         try:
             logger.info(f"Starting Perplexity analysis for {symbol}")
             
-            # Update prompt to be more strict about JSON format
             prompt = f"""
             Analyze these news articles about {symbol} and return a JSON object.
             
@@ -52,16 +51,17 @@ class PerplexityNewsAnalyzer:
             1. Response must be ONLY valid JSON
             2. No trailing commas
             3. Use single quotes (') for quoted text within strings
-            4. No comments or additional text
+            4. DO NOT include citation numbers like [1] or [2] in the text
+            5. No comments or additional text
             
             Example format:
             {{
-                "key_developments": "Company was rated as 'buy' by analysts",
+                "key_developments": "Company was rated as buy by analysts",
                 "market_sentiment": "positive",
-                "price_impact": "Stock rose 5% after 'strong buy' rating",
-                "risks": ["Competition from 'major players'"],
-                "expert_quotes": ["Analyst says 'very bullish'"],
-                "summary": "Overall positive with 'strong' outlook"
+                "price_impact": "Stock rose 5% after strong buy rating",
+                "risks": ["Competition from major players"],
+                "expert_quotes": ["Analyst says very bullish"],
+                "summary": "Overall positive with strong outlook"
             }}
             
             Articles: {json.dumps(articles)}
@@ -70,7 +70,7 @@ class PerplexityNewsAnalyzer:
             response = self.client.chat.completions.create(
                 model="llama-3.1-sonar-huge-128k-online",
                 messages=[
-                    {"role": "system", "content": "You are a financial analyst. Return only valid JSON."},
+                    {"role": "system", "content": "You are a financial analyst. Return only valid JSON. Do not include citation numbers."},
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.1,
@@ -141,71 +141,32 @@ class NewsCollector:
 
         ticker = yf.Ticker(symbol)
         news = ticker.news[:5] if ticker.news else []
+        logger.info(f"News: {news}")
         self._news_cache[symbol] = (now, news)
         return news
 
-    async def collect_daily_news(self, symbol: str) -> Optional[StockNews]:
+    async def collect_daily_news(self, symbol: str) -> Dict:
         try:
-            logger.info(f"Starting news collection for {symbol}")
-            news_data = await self.get_news(symbol)
+            current = await self.db.get_latest_news(symbol)
+            if current:
+                await self.db.add_to_history(symbol, current)
+                
+            news = await self.get_news(symbol)
             
-            logger.info(f"Found {len(news_data) if news_data else 0} news items for {symbol}")
+            # Extract source URLs before analysis
+            source_urls = [article.get('link') for article in news if article.get('link')]
             
-            if not news_data:
-                logger.warning(f"No news found for {symbol}")
-                return
+            # Get analysis without the URLs
+            analysis = await self.analyzer.analyze_stock_news(symbol, news)
             
-            # Process top 5 most recent articles
-            articles = news_data[:5]
-            logger.info(f"Processing top {len(articles)} news items for {symbol}")
+            # Add source URLs separately
+            analysis['source_urls'] = source_urls
             
-            # Format articles for analysis
-            formatted_articles = [
-                {
-                    "title": article.get("title", ""),
-                    "summary": article.get("summary", ""),
-                    "url": article.get("link", ""),
-                    "publisher": article.get("publisher", ""),
-                    "published": article.get("published", "")
-                }
-                for article in articles
-            ]
-            
-            logger.info(f"Sending {len(formatted_articles)} articles to Perplexity for analysis")
-            analysis = await self.analyzer.analyze_stock_news(symbol, formatted_articles)
-            logger.info("Perplexity analysis completed")
-            
-            # Calculate sentiment score
-            sentiment_score = self._calculate_sentiment(analysis)
-            logger.info(f"Calculated sentiment score: {sentiment_score}")
-            
-            # Create news entry
-            news_entry = StockNews(
-                symbol=symbol,
-                date=datetime.now(),
-                perplexity_summary=analysis,
-                source_urls=[a["url"] for a in formatted_articles],
-                sentiment_score=sentiment_score
-            )
-            
-            self.db.add(news_entry)
-            self.db.commit()
-            logger.info(f"Successfully stored news analysis for {symbol}")
-            
-            # Store in history
-            history_entry = StockAnalysisHistory(
-                symbol=symbol,
-                perplexity_summary=analysis,
-                sentiment_score=sentiment_score,
-                source_urls=[a["url"] for a in formatted_articles]
-            )
-            self.db.add(history_entry)
-            self.db.commit()
-            
-            return news_entry
+            await self.db.update_latest_news(symbol, analysis)
+            return analysis
             
         except Exception as e:
-            logger.error(f"Error collecting news for {symbol}: {str(e)}", exc_info=True)
+            logger.error(f"News collection failed: {e}")
             raise
     
     def _calculate_sentiment(self, analysis: Dict) -> float:

@@ -17,6 +17,7 @@ function StocksView() {
   const fileInputRef = useRef(null);
   const [isAnalyzingAll, setIsAnalyzingAll] = useState(false);
   const [lastFetchTime, setLastFetchTime] = useState(null);
+  const [watchlistKey, setWatchlistKey] = useState(0);
 
   const fetchPrice = async () => {
     if (!ticker) return;
@@ -106,6 +107,7 @@ function StocksView() {
       });
       if (!response.ok) throw new Error('Failed to add to watchlist');
       setError(null);
+      setWatchlistKey(prev => prev + 1);
     } catch (err) {
       setError(err.message);
     }
@@ -119,6 +121,7 @@ function StocksView() {
             onSelectStock={handleSelectStock}
             onAnalyzeAll={handleAnalyzeAll}
             isAnalyzing={isAnalyzingAll}
+            key={watchlistKey}
           />
         </aside>
         

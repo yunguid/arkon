@@ -3,7 +3,7 @@ import './Watchlist.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
-function Watchlist({ onSelectStock, onAnalyzeAll, isAnalyzing }) {
+function Watchlist({ onSelectStock, onAnalyzeAll, isAnalyzing, shouldRefresh, onRefreshComplete }) {
     const [watchlist, setWatchlist] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -38,6 +38,13 @@ function Watchlist({ onSelectStock, onAnalyzeAll, isAnalyzing }) {
     useEffect(() => {
         fetchWatchlist();
     }, []);
+
+    useEffect(() => {
+        if (shouldRefresh) {
+            fetchWatchlist();
+            onRefreshComplete();
+        }
+    }, [shouldRefresh]);
 
     return (
         <div className="watchlist">

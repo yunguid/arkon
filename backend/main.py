@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import polars as pl
 from dotenv import load_dotenv
-from database import SessionLocal, FinancialDocument, StockNews, Watchlist, StockAnalysisHistory, init_db
+from database import SessionLocal, FinancialDocument, StockNews, Watchlist, StockAnalysisHistory, init_db, StockNewsRepository
 from sqlalchemy.orm import Session
 import ell
 from ell.types import Message
@@ -43,6 +43,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 load_dotenv()
+
+# Initialize database
+init_db()
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 if not ANTHROPIC_API_KEY:
@@ -423,26 +426,25 @@ async def get_stock_news(
     }
 
 @app.post("/stock/{symbol}/collect_news")
-async def trigger_news_collection(
-    symbol: str,
-    db: Session = Depends(get_db)
-):
-    """Manually trigger news collection for a symbol"""
+async def trigger_news_collection(symbol: str, db: Session = Depends(get_db)):
     try:
         logger.info(f"Manual news collection triggered for {symbol}")
         
         analyzer = PerplexityNewsAnalyzer(os.getenv("PERPLEXITY_API_KEY"))
-        collector = NewsCollector(db, analyzer)
+        news_repo = StockNewsRepository(db)
+        collector = NewsCollector(news_repo, analyzer)
         
-        news_entry = await collector.collect_daily_news(symbol)
+        analysis = await collector.collect_daily_news(symbol)
         
-        if news_entry:
+        if analysis:
             logger.info(f"Successfully collected news for {symbol}")
-            return {"status": "success", "message": "News collected successfully"}
-        else:
-            logger.warning(f"No news collected for {symbol}")
-            return {"status": "warning", "message": "No news found"}
-            
+            return {
+                "status": "success", 
+                "news": {
+                    "summary": analysis,  # This contains all the fields
+                    "source_urls": analysis.get('source_urls', [])
+                }
+            }
     except Exception as e:
         logger.error(f"Error collecting news for {symbol}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
