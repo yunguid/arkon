@@ -22,12 +22,6 @@
   height: 100%;
 }
 
-/* Remove old ASCII animations */
-.ascii-container,
-.ascii-pattern {
-  display: none;
-}
-
 .content-wrapper {
   max-width: 1400px;
   margin: 2rem auto;
@@ -48,35 +42,6 @@
   margin: 1rem 0;
   background: #ffebee;
   border-radius: 4px;
-}
-
-/* Add a steam effect */
-.ascii-container::before {
-  content: '';
-  position: absolute;
-  top: -20px;
-  left: 50%;
-  width: 10px;
-  height: 20px;
-  background: rgba(255, 255, 255, 0.1);
-  filter: blur(5px);
-  animation: steam 3s infinite;
-}
-
-@keyframes steam {
-  0% {
-    transform: translateY(0) translateX(-50%) scale(1);
-    opacity: 0.5;
-  }
-  100% {
-    transform: translateY(-20px) translateX(-50%) scale(2);
-    opacity: 0;
-  }
-}
-
-@keyframes containerPulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.01); }
 }
 
 .main-nav {

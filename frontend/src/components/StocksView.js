@@ -23,7 +23,10 @@ function StocksView() {
   const fetchPrice = async () => {
     if (!ticker) return;
     try {
-      setLivePrice(100.00); // Mock price
+      const response = await fetch(`http://localhost:8000/stock/${ticker}/price`);
+      if (!response.ok) throw new Error('Failed to fetch price');
+      const data = await response.json();
+      setLivePrice(data.price);
       setError(null);
     } catch (err) {
       setError(err.message);
