@@ -1,0 +1,109 @@
+.stock-news {
+    padding: 1rem;
+    background: rgba(44, 62, 80, 0.1);
+    border-radius: 8px;
+}
+
+.news-item {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: white;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.news-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.news-date {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.sentiment {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.summary {
+    margin: 1rem 0;
+    line-height: 1.5;
+    color: #2c3e50;
+}
+
+.sources {
+    color: #666;
+    font-size: 0.8rem;
+}
+
+.collect-news-btn {
+    padding: 0.5rem 1rem;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.status-message, .error-message {
+    padding: 0.5rem;
+    margin: 1rem 0;
+    border-radius: 4px;
+}
+
+.status-message {
+    background-color: #f8f9fa;
+    border-left: 4px solid #17a2b8;
+}
+
+.error-message {
+    background-color: #fff3f3;
+    border-left: 4px solid #dc3545;
+    color: #dc3545;
+}
+
+.source-tooltip-container {
+    position: relative;
+    display: inline-block;
+}
+
+.source-tooltip {
+    display: none;
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 0.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    min-width: 200px;
+    z-index: 1000;
+}
+
+.source-tooltip ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.source-tooltip li {
+    margin: 0.25rem 0;
+}
+
+.source-tooltip a {
+    color: #3498db;
+    text-decoration: none;
+}
+
+.source-tooltip a:hover {
+    text-decoration: underline;
+}
+
+.source-tooltip-container:hover .source-tooltip {
+    display: block;
+} 

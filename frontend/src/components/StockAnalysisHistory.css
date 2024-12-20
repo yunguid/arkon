@@ -1,0 +1,99 @@
+.analysis-history {
+    margin-top: 2rem;
+    padding: 1rem;
+    background: rgba(44, 62, 80, 0.1);
+    border-radius: 8px;
+}
+
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.history-item {
+    background: white;
+    padding: 1rem;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 0.5rem;
+}
+
+.header-main {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.expand-icon {
+    color: #666;
+    font-size: 0.8rem;
+    transition: transform 0.3s ease;
+}
+
+.history-item:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.history-item.expanded {
+    background: #f8f9fa;
+}
+
+.history-content {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+}
+
+.date {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.sentiment {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.sentiment.positive { background: #d4edda; color: #155724; }
+.sentiment.negative { background: #f8d7da; color: #721c24; }
+.sentiment.neutral { background: #e2e3e5; color: #383d41; }
+
+.history-item:not(.expanded) {
+    padding: 0.75rem 1rem;
+}
+
+.history-item:not(.expanded) .history-header {
+    padding-bottom: 0;
+    margin-bottom: 0;
+    border-bottom: none;
+}
+
+.key-points {
+    margin: 1rem 0;
+}
+
+.key-points strong {
+    display: block;
+    margin-top: 1rem;
+    color: #2c3e50;
+}
+
+.risks ul {
+    margin: 0.5rem 0;
+    padding-left: 1.5rem;
+}
+
+.sources {
+    margin-top: 1rem;
+    color: #666;
+} 

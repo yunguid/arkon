@@ -12,17 +12,20 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-scripts": "^5.0.1",
-    "recharts": "^2.14.1"
+    "recharts": "^2.12.2"
   },
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "gh-pages": "^6.2.0",
     "nth-check": "^2.1.1"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build"
   },
   "eslintConfig": {
     "extends": [
@@ -45,5 +48,6 @@
   "overrides": {
     "nth-check": "^2.1.1",
     "postcss": "^8.4.31"
-  }
+  },
+  "homepage": "https://yunguid.github.io/arkon"
 }

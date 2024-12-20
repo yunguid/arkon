@@ -8,10 +8,21 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import polars as pl
 from dotenv import load_dotenv
+from database import SessionLocal, FinancialDocument, StockNews, Watchlist, StockAnalysisHistory
+from sqlalchemy.orm import Session
 import ell
 from ell.types import Message
-from database import SessionLocal, FinancialDocument
-from sqlalchemy.orm import Session
+from datetime import date, datetime
+import yfinance as yf
+from services.news_scraper import PerplexityNewsAnalyzer, NewsCollector
+from services.news_scheduler import NewsScheduler
+from functools import lru_cache
+
+class DateJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, (date, datetime)):
+            return obj.isoformat()
+        return super().default(obj)
 
 def get_db():
     db = SessionLocal()
@@ -29,122 +40,218 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 if not ANTHROPIC_API_KEY:
     raise ValueError("ANTHROPIC_API_KEY environment variable is not set")
 
+ell.init(store='./logdir', autocommit=True)
+
+@ell.simple(model="gpt-4o-mini")
+def analyze_transaction(description: str) -> str:
+    """Analyze a single transaction description.
+    Return format: MainCategory/SubCategory/Detail
+    """
+    prompt = f"""Analyze this transaction and categorize it into exactly three levels:
+    Transaction: {description}
+
+    Rules:
+    1. Use format: MainCategory/SubCategory/Detail
+    2. MainCategory should be one of: Shopping, Food, Transport, Housing, Entertainment, Utilities, Healthcare, Income, Other
+    3. SubCategory should be specific but standardized
+    4. Detail should include merchant type or distinctive detail
+
+    Examples:
+    - "WALMART GROCERY" -> Shopping/Groceries/Supermarket
+    - "UBER TRIP 123" -> Transport/Rideshare/Uber
+    - "NETFLIX MONTHLY" -> Entertainment/Streaming/Netflix
+    - "SHELL OIL" -> Transport/Fuel/GasStation
+
+    Return only the category string, no other text.
+    """
+    return prompt
+
+def enhance_categorization(df: pl.DataFrame) -> pl.DataFrame:
+    """Add AI-enhanced categorization to the DataFrame"""
+    logger.info("Starting AI categorization")
+    try:
+        unique_descriptions = df.select("Description").unique().to_series().to_list()
+        logger.info(f"Unique descriptions: {unique_descriptions}")
+        enhanced_categories = []
+        
+        for desc in unique_descriptions:
+            try:
+                category_str = analyze_transaction(desc).strip()
+                logger.info(f"AI category for '{desc}': '{category_str}'")
+                # Validate format
+                parts = category_str.split("/")
+                if len(parts) < 3:
+                    logger.warning(f"Invalid AI category for '{desc}': '{category_str}'. Using fallback.")
+                    category_str = "Other/Unknown/Unknown"
+                enhanced_categories.append({
+                    "Description": desc,
+                    "ai_category": category_str
+                })
+            except Exception as e:
+                logger.warning(f"Failed to categorize '{desc}': {e}. Using fallback.")
+                enhanced_categories.append({
+                    "Description": desc,
+                    "ai_category": "Other/Unknown/Unknown"
+                })
+        
+        categories_df = pl.DataFrame(enhanced_categories)
+        df = df.join(categories_df, on="Description", how="left")
+
+        # Split categories into separate columns
+        df = df.with_columns([
+            pl.col("ai_category").str.split("/").list.get(0).fill_null("Other").alias("main_category"),
+            pl.col("ai_category").str.split("/").list.get(1).fill_null("Unknown").alias("sub_category"),
+            pl.col("ai_category").str.split("/").list.get(2).fill_null("Unknown").alias("detail_category")
+        ])
+        
+        return df
+    except Exception as e:
+        logger.error(f"AI categorization failed: {e}")
+        # In worst case, just return df without AI columns
+        return df.with_columns([
+            pl.lit("Other").alias("main_category"),
+            pl.lit("Unknown").alias("sub_category"),
+            pl.lit("Unknown").alias("detail_category")
+        ])
+
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # adjust as needed
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-ell.init(store='./logdir', autocommit=True, verbose=False)
-
-def categorize_expenses_expression():
-    return (
-        pl.when(pl.col("Description").str.contains("GROCERY|SUPERMARKET|WHOLE FOODS|WALMART|COSTCO", literal=True))
-        .then(pl.lit("groceries"))
-        .when(pl.col("Description").str.contains("RESTAURANT|CAFE|DINER|EATERY", literal=True))
-        .then(pl.lit("dining out"))
-        .when(pl.col("Description").str.contains("UBER|LYFT|TRANSPORT|GAS|PETROL|SUBWAY", literal=True))
-        .then(pl.lit("transport"))
-        .when(pl.col("Description").str.contains("NETFLIX|HULU|SPOTIFY|AMAZON PRIME", literal=True))
-        .then(pl.lit("entertainment"))
-        .when(pl.col("Description").str.contains("RENT|MORTGAGE|UTILITIES|ELECTRIC|WATER|INTERNET|CABLE", literal=True))
-        .then(pl.lit("housing/utilities"))
-        .otherwise(pl.lit("other"))
-    )
+@app.on_event("startup")
+async def startup_event():
+    try:
+        # Initialize news collection system
+        perplexity_key = os.getenv("PERPLEXITY_API_KEY")
+        if not perplexity_key:
+            logger.warning("PERPLEXITY_API_KEY not set, news collection disabled")
+            return
+            
+        analyzer = PerplexityNewsAnalyzer(perplexity_key)
+        db = SessionLocal()
+        collector = NewsCollector(db, analyzer)
+        
+        # Start scheduler with default symbols
+        scheduler = NewsScheduler(collector, symbols=["AAPL", "MSFT", "GOOGL"])
+        scheduler.start()
+        
+        logger.info("News collection system initialized")
+    except Exception as e:
+        logger.error(f"Failed to initialize news system: {e}")
 
 def process_financial_data(contents: bytes):
-    df = pl.read_csv(io.BytesIO(contents))
-    logger.info(f"Loaded DataFrame with columns: {df.columns}")
+    try:
+        df = pl.read_csv(io.BytesIO(contents))
+        logger.info(f"Loaded DataFrame with columns: {df.columns}")
 
-    required_cols = {"Date", "Amount", "Description"}
-    if not required_cols.issubset(set(df.columns)):
-        raise ValueError(f"CSV must contain columns: {', '.join(required_cols)}")
+        required_cols = {"Date", "Amount", "Description"}
+        if not required_cols.issubset(set(df.columns)):
+            raise ValueError(f"CSV must contain columns: {', '.join(required_cols)}")
 
-    df = df.with_columns([
-        pl.col("Date").str.strptime(pl.Date, format="%m/%d/%Y"),
-        pl.col("Amount").cast(pl.Float64),
-        pl.col("Description").str.to_uppercase().str.strip_chars()
-    ])
-
-    df = df.with_columns([
-        categorize_expenses_expression().alias("Category")
-    ])
-
-    date_series = df["Date"]
-    max_date = date_series.max()
-    min_date = date_series.min()
-    num_days = max((max_date - min_date).days + 1, 1)
-
-    total_expenses = df["Amount"].sum()
-
-    daily_expenses = (
-        df.group_by("Date")
-        .agg(pl.col("Amount").sum().alias("amount"))
-        .sort("Date")
-    ).to_dicts()
-    for d in daily_expenses:
-        d["date"] = d.pop("Date").strftime("%Y-%m-%d")
-
-    recurring = (
-        df.group_by("Description")
-        .agg([
-            pl.col("Amount").count().alias("count"),
-            pl.col("Amount").sum().alias("totalamount"),
-            (pl.col("Amount").sum() / pl.col("Amount").count()).alias("averageamount")
+        # Clean and parse data
+        df = df.with_columns([
+            pl.col("Date").str.strptime(pl.Date, format="%m/%d/%Y"),
+            pl.col("Amount").cast(pl.Float64),
+            pl.col("Description").cast(pl.Utf8).str.to_uppercase().str.strip_chars()
         ])
-        .filter(pl.col("count") > 1)
-        .sort("totalamount", descending=True)
-        .to_dicts()
-    )
-    for r in recurring:
-        r["description"] = r.pop("Description")
 
-    cat_breakdown = (
-        df.group_by("Category")
-        .agg(pl.col("Amount").sum().alias("amount"))
-        .sort("amount", descending=True)
-        .to_dicts()
-    )
-    for c in cat_breakdown:
-        c["category"] = c.pop("Category")
+        # Remove basic categorization and rely only on AI
+        df = enhance_categorization(df)
 
-    top_5 = (
-        df.group_by("Description")
-        .agg(pl.col("Amount").sum().alias("amount"))
-        .sort("amount", descending=True)
-        .head(5)
-        .to_dicts()
-    )
-    for t in top_5:
-        t["description"] = t.pop("Description")
+        date_series = df["Date"]
+        max_date = date_series.max()
+        min_date = date_series.min()
+        num_days = max((max_date - min_date).days + 1, 1)
+        total_expenses = float(df["Amount"].sum())
 
-    avg_daily = float(total_expenses / num_days)
-    avg_monthly = float(total_expenses / (num_days / 30))
+        # Daily expenses
+        daily = (
+            df.group_by("Date")
+            .agg(pl.col("Amount").sum().alias("amount"))
+            .sort("Date")
+            .to_dicts()
+        )
+        for d in daily:
+            d["date"] = d.pop("Date").strftime("%Y-%m-%d")
 
-    summary = {
-        "total_expenses": float(total_expenses),
-        "average_daily": avg_daily,
-        "average_monthly": avg_monthly,
-        "daily_expenses": daily_expenses,
-        "category_breakdown": cat_breakdown,
-        "top_5_expenses": top_5,
-        "recurring_transactions": recurring,
-        "date_range": {
-            "start": min_date.strftime("%Y-%m-%d"),
-            "end": max_date.strftime("%Y-%m-%d")
+        # Top 5 expenses
+        top_5 = (
+            df.group_by("Description")
+            .agg(pl.col("Amount").sum().alias("amount"))
+            .sort("amount", descending=True)
+            .head(5)
+            .to_dicts()
+        )
+        for t in top_5:
+            t["description"] = t.pop("Description")
+
+        # Recurring transactions
+        recurring = (
+            df.group_by("Description")
+            .agg([
+                pl.col("Amount").count().alias("count"),
+                pl.col("Amount").sum().alias("totalamount"),
+                (pl.col("Amount").sum() / pl.col("Amount").count()).alias("averageamount")
+            ])
+            .filter(pl.col("count") > 1)
+            .sort("totalamount", descending=True)
+            .to_dicts()
+        )
+        for r in recurring:
+            r["description"] = r.pop("Description")
+
+        # Cumulative spending
+        daily_df = pl.DataFrame(daily)
+        daily_df = daily_df.with_columns(pl.col("date").str.strptime(pl.Date, "%Y-%m-%d"))
+        daily_df = daily_df.sort("date")
+        daily_df = daily_df.with_columns(pl.col("amount").cum_sum().alias("cumulative"))
+        cumulative_spending = []
+        for row in daily_df.to_dicts():
+            row["date"] = row["date"].strftime("%Y-%m-%d")
+            cumulative_spending.append(row)
+
+        # AI categories
+        ai_categories = []
+        if "main_category" in df.columns and "sub_category" in df.columns and "detail_category" in df.columns:
+            ai_categories = (
+                df.group_by(["main_category", "sub_category", "detail_category"])
+                .agg([
+                    pl.col("Amount").sum().alias("amount"),
+                    pl.col("Amount").count().alias("count")
+                ])
+                .sort("amount", descending=True)
+                .to_dicts()
+            )
+
+        logger.info(f"AI categories:\n{json.dumps(ai_categories, indent=2)}")
+
+        summary = {
+            "total_expenses": total_expenses,
+            "average_daily": float(total_expenses / num_days),
+            "average_monthly": float(total_expenses / (num_days / 30)),
+            "daily_expenses": daily,
+            "top_5_expenses": top_5,
+            "recurring_transactions": recurring,
+            "cumulative_spending": cumulative_spending,
+            "ai_categories": ai_categories,
+            "category_hierarchy": {
+                "main": df["main_category"].unique().to_list() if "main_category" in df.columns else [],
+                "sub": df["sub_category"].unique().to_list() if "sub_category" in df.columns else [],
+                "detail": df["detail_category"].unique().to_list() if "detail_category" in df.columns else []
+            }
         }
-    }
-    return summary
 
-class DateJSONEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, (datetime.date, datetime.datetime)):
-            return obj.isoformat()
-        return super().default(obj)
+        return summary
+
+    except Exception as e:
+        logger.error(f"Error processing file: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...), db: Session = Depends(get_db)):
@@ -157,12 +264,11 @@ async def upload_file(file: UploadFile = File(...), db: Session = Depends(get_db
     if len(contents) == 0:
         raise HTTPException(status_code=400, detail="Empty file uploaded")
 
-    # If filename exists, rename it
     base_name, ext = os.path.splitext(file.filename)
     new_filename = file.filename
     doc_count = db.query(FinancialDocument).filter(FinancialDocument.filename == file.filename).count()
     if doc_count > 0:
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         new_filename = f"{base_name}_{timestamp}{ext}"
 
     summary = process_financial_data(contents)
@@ -204,6 +310,240 @@ def get_file(file_id: int, db: Session = Depends(get_db)):
     return {
         "status": "success",
         "summary": summary
+    }
+
+@lru_cache(maxsize=100)
+def get_cached_price(symbol: str, timestamp: int) -> float:
+    """Cache price data for 1 minute"""
+    ticker = yf.Ticker(symbol)
+    data = ticker.history(period="1d")
+    return float(data['Close'].iloc[-1])
+
+@app.get("/stock_price")
+async def get_stock_price(symbol: str):
+    """Fetch current stock price with caching"""
+    try:
+        # Use 1-minute timestamp for cache key
+        timestamp = int(datetime.now().timestamp() / 60)
+        price = get_cached_price(symbol, timestamp)
+        return {"symbol": symbol, "price": price}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/upload_stock_data")
+async def upload_stock_file(file: UploadFile = File(...)):
+    """Process uploaded stock CSV data."""
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="File must be a CSV")
+    
+    try:
+        contents = await file.read()
+        if len(contents) == 0:
+            raise HTTPException(status_code=400, detail="Empty file")
+
+        # Parse CSV with polars for better performance
+        df = pl.read_csv(io.BytesIO(contents))
+        
+        required_cols = {"Date", "Price"}
+        if not required_cols.issubset(set(df.columns)):
+            raise HTTPException(
+                status_code=400, 
+                detail=f"CSV must contain columns: {', '.join(required_cols)}"
+            )
+
+        # Process data
+        df = df.with_columns([
+            pl.col("Date").str.strptime(pl.Date, format="%Y-%m-%d"),
+            pl.col("Price").cast(pl.Float64)
+        ])
+
+        # Generate summary
+        summary = {
+            "daily_prices": df.sort("Date").select([
+                "Date", "Price"
+            ]).rename({
+                "Date": "date",
+                "Price": "price"
+            }).with_columns([
+                pl.col("date").cast(str)
+            ]).to_dicts()
+        }
+
+        # Add volume analysis if available
+        if "Volume" in df.columns:
+            top_volume = df.sort("Volume", descending=True).head(5)
+            summary["top_volume_days"] = top_volume.select([
+                "Date", "Volume"
+            ]).rename({
+                "Date": "date",
+                "Volume": "volume"
+            }).with_columns([
+                pl.col("date").cast(str)
+            ]).to_dicts()
+
+        return {"status": "success", "summary": summary}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/stock/{symbol}/news")
+async def get_stock_news(
+    symbol: str, 
+    start_date: datetime = None, 
+    end_date: datetime = None,
+    db: Session = Depends(get_db)
+):
+    """Get historical news and analysis for a stock"""
+    query = db.query(StockNews).filter(StockNews.symbol == symbol)
+    
+    if start_date:
+        query = query.filter(StockNews.date >= start_date)
+    if end_date:
+        query = query.filter(StockNews.date <= end_date)
+        
+    news = query.order_by(StockNews.date.desc()).all()
+    
+    return {
+        "symbol": symbol,
+        "news": [
+            {
+                "date": n.date,
+                "summary": n.perplexity_summary,
+                "sentiment": n.sentiment_score,
+                "sources": n.source_urls
+            }
+            for n in news
+        ]
+    }
+
+@app.post("/stock/{symbol}/collect_news")
+async def trigger_news_collection(
+    symbol: str,
+    db: Session = Depends(get_db)
+):
+    """Manually trigger news collection for a symbol"""
+    try:
+        logger.info(f"Manual news collection triggered for {symbol}")
+        
+        analyzer = PerplexityNewsAnalyzer(os.getenv("PERPLEXITY_API_KEY"))
+        collector = NewsCollector(db, analyzer)
+        
+        news_entry = await collector.collect_daily_news(symbol)
+        
+        if news_entry:
+            logger.info(f"Successfully collected news for {symbol}")
+            return {"status": "success", "message": "News collected successfully"}
+        else:
+            logger.warning(f"No news collected for {symbol}")
+            return {"status": "warning", "message": "No news found"}
+            
+    except Exception as e:
+        logger.error(f"Error collecting news for {symbol}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/watchlist")
+async def get_watchlist(db: Session = Depends(get_db)):
+    """Get user's watchlist"""
+    try:
+        watchlist = db.query(Watchlist).all()
+        return {
+            "watchlist": [
+                {
+                    "symbol": item.symbol,
+                    "added_date": item.added_date,
+                    "last_analysis": item.last_analysis
+                }
+                for item in watchlist
+            ]
+        }
+    except Exception as e:
+        logger.error(f"Error fetching watchlist: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/watchlist/{symbol}")
+async def add_to_watchlist(symbol: str, db: Session = Depends(get_db)):
+    existing = db.query(Watchlist).filter(Watchlist.symbol == symbol).first()
+    if existing:
+        return {"status": "exists", "message": f"{symbol} already in watchlist"}
+    
+    watchlist_item = Watchlist(symbol=symbol)
+    db.add(watchlist_item)
+    db.commit()
+    return {"status": "success", "message": f"Added {symbol} to watchlist"}
+
+@app.delete("/watchlist/{symbol}")
+async def remove_from_watchlist(symbol: str, db: Session = Depends(get_db)):
+    db.query(Watchlist).filter(Watchlist.symbol == symbol).delete()
+    db.commit()
+    return {"status": "success", "message": f"Removed {symbol} from watchlist"}
+
+@app.post("/watchlist/analyze")
+async def analyze_watchlist(db: Session = Depends(get_db)):
+    """Analyze all stocks in watchlist"""
+    try:
+        watchlist = db.query(Watchlist).all()
+        if not watchlist:
+            return {"status": "warning", "message": "Watchlist is empty"}
+            
+        analyzer = PerplexityNewsAnalyzer(os.getenv("PERPLEXITY_API_KEY"))
+        collector = NewsCollector(db, analyzer)
+        
+        results = []
+        for item in watchlist:
+            try:
+                logger.info(f"Analyzing {item.symbol}")
+                news_entry = await collector.collect_daily_news(item.symbol)
+                
+                # Update last_analysis timestamp
+                item.last_analysis = datetime.utcnow()
+                db.commit()
+                
+                if news_entry:
+                    results.append({
+                        "symbol": item.symbol,
+                        "status": "success"
+                    })
+            except Exception as e:
+                logger.error(f"Error analyzing {item.symbol}: {e}")
+                results.append({
+                    "symbol": item.symbol,
+                    "status": "error",
+                    "error": str(e)
+                })
+                
+        return {
+            "status": "complete",
+            "results": results
+        }
+        
+    except Exception as e:
+        logger.error(f"Batch analysis failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/stock/{symbol}/analysis_history")
+async def get_analysis_history(
+    symbol: str,
+    limit: int = 10,
+    db: Session = Depends(get_db)
+):
+    """Get historical analyses for a stock"""
+    history = db.query(StockAnalysisHistory)\
+        .filter(StockAnalysisHistory.symbol == symbol)\
+        .order_by(StockAnalysisHistory.analysis_date.desc())\
+        .limit(limit)\
+        .all()
+        
+    return {
+        "symbol": symbol,
+        "history": [
+            {
+                "date": h.analysis_date,
+                "summary": h.perplexity_summary,
+                "sentiment": h.sentiment_score,
+                "sources": h.source_urls
+            }
+            for h in history
+        ]
     }
 
 if __name__ == "__main__":

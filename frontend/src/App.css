@@ -78,3 +78,26 @@
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.01); }
 }
+
+.main-nav {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: rgba(44, 62, 80, 0.1);
+}
+
+.nav-btn {
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: 1px solid #3498db;
+  color: #3498db;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.nav-btn.active {
+  background: #3498db;
+  color: white;
+}

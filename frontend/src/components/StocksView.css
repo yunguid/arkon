@@ -1,0 +1,72 @@
+.stocks-view {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.stock-input-section {
+  background: rgba(44, 62, 80, 0.1);
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
+.input-group {
+  display: flex;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.input-group input {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #3498db;
+  border-radius: 4px;
+}
+
+.input-group button {
+  padding: 0.5rem 1rem;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.input-group button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.live-price {
+  font-size: 1.5rem;
+  color: #2ecc71;
+  margin-top: 1rem;
+}
+
+.chart-container {
+  background: rgba(44, 62, 80, 0.1);
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-top: 2rem;
+}
+
+.error-message {
+  color: #e74c3c;
+  margin: 1rem 0;
+}
+
+.stocks-layout {
+  display: flex;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.stocks-sidebar {
+  width: 300px;
+  flex-shrink: 0;
+}
+
+.stocks-main {
+  flex-grow: 1;
+} 
