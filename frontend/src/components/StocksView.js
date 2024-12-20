@@ -4,6 +4,7 @@ import './StocksView.css';
 import StockNews from './StockNews';
 import Watchlist from './Watchlist';
 import StockAnalysisHistory from './StockAnalysisHistory';
+import ResearchView from './ResearchView';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -11,13 +12,12 @@ function StocksView() {
   const [ticker, setTicker] = useState('');
   const [livePrice, setLivePrice] = useState(null);
   const [error, setError] = useState(null);
-  const [intervalId, setIntervalId] = useState(null);
   const [stockDataSummary, setStockDataSummary] = useState(null);
   const [loadingUpload, setLoadingUpload] = useState(false);
   const fileInputRef = useRef(null);
   const [isAnalyzingAll, setIsAnalyzingAll] = useState(false);
-  const [lastFetchTime, setLastFetchTime] = useState(null);
   const [watchlistKey, setWatchlistKey] = useState(0);
+  const [selectedStock, setSelectedStock] = useState(null);
 
   const fetchPrice = async () => {
     if (!ticker) return;
@@ -26,31 +26,11 @@ function StocksView() {
       if (!response.ok) throw new Error('Failed to fetch price');
       const data = await response.json();
       setLivePrice(data.price);
-      setLastFetchTime(new Date());
       setError(null);
     } catch (err) {
       setError(err.message);
     }
   };
-
-  const startUpdates = () => {
-    if (intervalId) clearInterval(intervalId);
-    const newId = setInterval(fetchPrice, 120000);
-    setIntervalId(newId);
-  };
-
-  const stopUpdates = useCallback(() => {
-    if (intervalId) {
-      clearInterval(intervalId);
-      setIntervalId(null);
-    }
-  }, [intervalId]);
-
-  useEffect(() => {
-    return () => {
-      stopUpdates();
-    };
-  }, [stopUpdates]);
 
   const handleUpload = async (e) => {
     e.preventDefault();
@@ -79,6 +59,7 @@ function StocksView() {
 
   const handleSelectStock = (symbol) => {
     setTicker(symbol);
+    setSelectedStock(symbol);
   };
 
   const handleAnalyzeAll = async () => {
@@ -138,21 +119,21 @@ function StocksView() {
               />
               <button onClick={fetchPrice}>Get Price</button>
               <button onClick={addToWatchlist}>Add to Watchlist</button>
-              <button onClick={startUpdates} disabled={!ticker}>Auto-Refresh</button>
-              <button onClick={stopUpdates}>Stop Refresh</button>
             </div>
             {error && <div className="error-message">{error}</div>}
             {livePrice && (
               <div className="live-price">
                 {ticker}: ${livePrice.toFixed(2)}
-                <small>Last updated: {lastFetchTime?.toLocaleTimeString()}</small>
               </div>
             )}
-            {ticker && (
+            {ticker && !selectedStock && (
               <>
                 <StockNews symbol={ticker} />
                 <StockAnalysisHistory symbol={ticker} />
               </>
+            )}
+            {selectedStock && (
+              <ResearchView symbol={selectedStock} />
             )}
           </div>
         </main>

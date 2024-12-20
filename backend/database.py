@@ -50,17 +50,45 @@ class StockNews(Base):
     def __repr__(self):
         return f"<StockNews(symbol='{self.symbol}', date='{self.date}')>"
 
-class Watchlist(Base):
-    __tablename__ = "watchlists"
+class WatchlistStock(Base):
+    __tablename__ = "watchlist_stocks"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String, index=True)  # For future auth
-    symbol = Column(String, index=True)
+    symbol = Column(String, unique=True, index=True)
+    company_name = Column(String)
+    sector = Column(String)
     added_date = Column(DateTime, default=datetime.utcnow)
+    last_analyzed = Column(DateTime, nullable=True)
     last_analysis = Column(DateTime, nullable=True)
+    cik = Column(String)
     
-    def __repr__(self):
-        return f"<Watchlist(symbol='{self.symbol}')>"
+    # Relationships
+    filings = relationship("StockFiling", back_populates="stock")
+    metrics = relationship("FinancialMetrics", back_populates="stock")
+
+class StockFiling(Base):
+    __tablename__ = "stock_filings"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    stock_id = Column(Integer, ForeignKey("watchlist_stocks.id"))
+    filing_type = Column(String)
+    filing_date = Column(DateTime)
+    filing_url = Column(String)
+    filing_data = Column(JSON)
+    
+    # Relationship
+    stock = relationship("WatchlistStock", back_populates="filings")
+
+class FinancialMetrics(Base):
+    __tablename__ = "financial_metrics"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    stock_id = Column(Integer, ForeignKey("watchlist_stocks.id"))
+    date = Column(DateTime, default=datetime.utcnow)
+    metrics = Column(JSON)
+    
+    # Relationship
+    stock = relationship("WatchlistStock", back_populates="metrics")
 
 class StockAnalysisHistory(Base):
     __tablename__ = "stock_analysis_history"

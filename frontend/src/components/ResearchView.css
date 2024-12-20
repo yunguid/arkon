@@ -1,0 +1,130 @@
+.research-view {
+    padding: 2rem;
+    background: linear-gradient(145deg, #1B2638, #2C3E50);
+    border-radius: 12px;
+    color: #E5E8EC;
+    margin-top: 2rem;
+}
+
+.research-header {
+    margin-bottom: 2rem;
+}
+
+.research-header h2 {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.company-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.company-info h3 {
+    margin: 0;
+    color: #3498db;
+}
+
+.sector {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.research-tabs {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 1rem;
+}
+
+.tab {
+    padding: 0.75rem 1.5rem;
+    background: transparent;
+    border: none;
+    color: #E5E8EC;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    border-radius: 4px;
+}
+
+.tab:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.tab.active {
+    background: #3498db;
+    color: white;
+}
+
+.filings-section {
+    padding: 1rem;
+}
+
+.fetch-filings-btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-bottom: 2rem;
+    transition: all 0.3s ease;
+}
+
+.fetch-filings-btn:hover {
+    background: #2980b9;
+    transform: translateY(-2px);
+}
+
+.filings-list {
+    list-style: none;
+    padding: 0;
+}
+
+.filing-item {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+}
+
+.filing-type {
+    font-weight: 600;
+    min-width: 80px;
+}
+
+.filing-date {
+    color: rgba(229, 232, 236, 0.7);
+}
+
+.filing-link {
+    margin-left: auto;
+    color: #3498db;
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    background: rgba(52, 152, 219, 0.1);
+    border-radius: 4px;
+    transition: all 0.3s ease;
+}
+
+.filing-link:hover {
+    background: rgba(52, 152, 219, 0.2);
+    transform: translateY(-2px);
+}
+
+.loading, .error {
+    padding: 2rem;
+    text-align: center;
+}
+
+.error {
+    color: #e74c3c;
+} 

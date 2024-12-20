@@ -3,10 +3,11 @@ import './Watchlist.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
-function Watchlist({ onSelectStock, onAnalyzeAll, isAnalyzing, shouldRefresh, onRefreshComplete }) {
+function Watchlist({ onSelectStock, onAnalyzeAll, isAnalyzing }) {
     const [watchlist, setWatchlist] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [expandedItem, setExpandedItem] = useState(null);
 
     const fetchWatchlist = async () => {
         try {
@@ -39,25 +40,9 @@ function Watchlist({ onSelectStock, onAnalyzeAll, isAnalyzing, shouldRefresh, on
         fetchWatchlist();
     }, []);
 
-    useEffect(() => {
-        if (shouldRefresh) {
-            fetchWatchlist();
-            onRefreshComplete();
-        }
-    }, [shouldRefresh]);
-
     return (
         <div className="watchlist">
-            <h3>
-                Watchlist
-                <button 
-                    className="analyze-all-btn"
-                    onClick={onAnalyzeAll}
-                    disabled={isAnalyzing || watchlist.length === 0}
-                >
-                    {isAnalyzing ? 'Analyzing...' : 'Analyze All'}
-                </button>
-            </h3>
+            <h3>Watchlist</h3>
             {loading ? (
                 <div>Loading...</div>
             ) : error ? (
@@ -65,15 +50,50 @@ function Watchlist({ onSelectStock, onAnalyzeAll, isAnalyzing, shouldRefresh, on
             ) : (
                 <ul className="watchlist-items">
                     {watchlist.map(item => (
-                        <li key={item.symbol} onClick={() => onSelectStock(item.symbol)}>
-                            <span className="symbol">{item.symbol}</span>
-                            <span className="last-analysis">
-                                {item.last_analysis ? new Date(item.last_analysis).toLocaleDateString() : 'Never'}
-                            </span>
-                            <button onClick={(e) => {
-                                e.stopPropagation();
-                                removeFromWatchlist(item.symbol);
-                            }}>×</button>
+                        <li 
+                            key={item.symbol} 
+                            className={expandedItem === item.symbol ? 'expanded' : ''}
+                        >
+                            <div 
+                                className="stock-header"
+                                onClick={() => setExpandedItem(
+                                    expandedItem === item.symbol ? null : item.symbol
+                                )}
+                            >
+                                <span className="symbol">{item.symbol}</span>
+                                <span className="company-name">{item.company_name}</span>
+                            </div>
+                            
+                            {expandedItem === item.symbol && (
+                                <div className="stock-details">
+                                    <div className="sector">{item.sector}</div>
+                                    <div className="actions">
+                                        <button 
+                                            onClick={() => onSelectStock(item.symbol)}
+                                            className="research-btn"
+                                        >
+                                            Research
+                                        </button>
+                                        <button 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                removeFromWatchlist(item.symbol);
+                                            }}
+                                            className="remove-btn"
+                                        >
+                                            Remove
+                                        </button>
+                                    </div>
+                                    <div className="status-indicators">
+                                        {item.has_filings && (
+                                            <span className="has-filings">SEC Filings Available</span>
+                                        )}
+                                        {item.metrics_available && (
+                                            <span className="has-metrics">Metrics Available</span>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </li>
                     ))}
                 </ul>

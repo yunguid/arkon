@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import polars as pl
 from dotenv import load_dotenv
-from database import SessionLocal, FinancialDocument, StockNews, Watchlist, StockAnalysisHistory, init_db, StockNewsRepository
+from database import SessionLocal, FinancialDocument, StockNews, WatchlistStock, StockAnalysisHistory, init_db, StockNewsRepository, FinancialMetrics, StockFiling
 from sqlalchemy.orm import Session
 import ell
 from ell.types import Message
@@ -18,6 +18,8 @@ from services.news_scraper import PerplexityNewsAnalyzer, NewsCollector
 from services.news_scheduler import NewsScheduler
 from functools import lru_cache
 from contextlib import asynccontextmanager
+from sec_api import QueryApi, PdfGeneratorApi
+from sec_cik_mapper import StockMapper  # Add this import at the top
 
 class DateJSONEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -133,6 +135,25 @@ analyzer = PerplexityNewsAnalyzer(perplexity_key) if perplexity_key else None
 db = SessionLocal()
 collector = NewsCollector(db, analyzer) if analyzer else None
 scheduler = NewsScheduler(collector, symbols=["AAPL", "MSFT", "GOOGL"]) if collector else None
+
+# Add SEC API setup
+SEC_API_KEY = os.getenv('SEC_API_KEY')
+if not SEC_API_KEY:
+    logger.warning("SEC API key not set. SEC filing features will be disabled.")
+    queryApi = None
+    pdfApi = None
+else:
+    try:
+        queryApi = QueryApi(api_key=SEC_API_KEY)
+        pdfApi = PdfGeneratorApi(api_key=SEC_API_KEY)
+        logger.info("SEC API initialization successful")
+    except Exception as e:
+        logger.error(f"SEC API initialization failed: {str(e)}")
+        queryApi = None
+        pdfApi = None
+
+# Initialize the stock mapper once
+stock_mapper = StockMapper()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -451,17 +472,23 @@ async def trigger_news_collection(symbol: str, db: Session = Depends(get_db)):
 
 @app.get("/watchlist")
 async def get_watchlist(db: Session = Depends(get_db)):
-    """Get user's watchlist"""
+    """Get user's watchlist with enhanced data"""
     try:
-        watchlist = db.query(Watchlist).all()
+        stocks = db.query(WatchlistStock).all()
         return {
             "watchlist": [
                 {
-                    "symbol": item.symbol,
-                    "added_date": item.added_date,
-                    "last_analysis": item.last_analysis
+                    "symbol": stock.symbol,
+                    "company_name": stock.company_name,
+                    "sector": stock.sector,
+                    "added_date": stock.added_date,
+                    "last_analysis": stock.last_analyzed,
+                    "has_filings": len(stock.filings) > 0,
+                    "metrics_available": bool(db.query(FinancialMetrics)
+                        .filter(FinancialMetrics.stock_id == stock.id)
+                        .first())
                 }
-                for item in watchlist
+                for stock in stocks
             ]
         }
     except Exception as e:
@@ -470,14 +497,48 @@ async def get_watchlist(db: Session = Depends(get_db)):
 
 @app.post("/watchlist/{symbol}")
 async def add_to_watchlist(symbol: str, db: Session = Depends(get_db)):
-    existing = db.query(Watchlist).filter(Watchlist.symbol == symbol).first()
-    if existing:
-        return {"status": "exists", "message": f"{symbol} already in watchlist"}
-    
-    watchlist_item = Watchlist(symbol=symbol)
-    db.add(watchlist_item)
-    db.commit()
-    return {"status": "success", "message": f"Added {symbol} to watchlist"}
+    """Add stock to watchlist with enhanced company info"""
+    try:
+        # Check if already exists
+        existing = db.query(WatchlistStock).filter(WatchlistStock.symbol == symbol).first()
+        if existing:
+            return {"status": "exists", "message": f"{symbol} already in watchlist"}
+        
+        # Get CIK from SEC mapper
+        cik = stock_mapper.ticker_to_cik.get(symbol.upper())
+        if not cik:
+            logger.warning(f"No CIK found for {symbol}")
+        
+        # Fetch basic company info from Yahoo Finance
+        ticker = yf.Ticker(symbol)
+        info = ticker.info
+        
+        # Create new watchlist entry with enhanced data
+        stock = WatchlistStock(
+            symbol=symbol,
+            company_name=info.get('longName', '') or stock_mapper.ticker_to_company_name.get(symbol.upper(), ''),
+            sector=info.get('sector', ''),
+            cik=cik
+        )
+        
+        db.add(stock)
+        db.commit()
+        db.refresh(stock)
+        
+        return {
+            "status": "success",
+            "message": f"Added {symbol} to watchlist",
+            "data": {
+                "symbol": stock.symbol,
+                "company_name": stock.company_name,
+                "sector": stock.sector,
+                "cik": cik
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error adding to watchlist: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/watchlist/{symbol}")
 async def remove_from_watchlist(symbol: str, db: Session = Depends(get_db)):
@@ -578,6 +639,162 @@ async def get_stock_price(symbol: str):
             status_code=500, 
             detail=f"Failed to fetch price for {symbol}: {str(e)}"
         )
+
+@app.get("/stock/{symbol}/research")
+async def get_stock_research(symbol: str, db: Session = Depends(get_db)):
+    """Get comprehensive research data for a stock"""
+    try:
+        # Get stock from watchlist
+        stock = db.query(WatchlistStock).filter(WatchlistStock.symbol == symbol).first()
+        if not stock:
+            raise HTTPException(status_code=404, detail="Stock not found in watchlist")
+        
+        # Get latest financial metrics
+        metrics = db.query(FinancialMetrics)\
+            .filter(FinancialMetrics.stock_id == stock.id)\
+            .order_by(FinancialMetrics.date.desc())\
+            .first()
+        
+        # Get SEC filings
+        filings = db.query(StockFiling)\
+            .filter(StockFiling.stock_id == stock.id)\
+            .order_by(StockFiling.filing_date.desc())\
+            .all()
+        
+        # Format response
+        return {
+            "symbol": stock.symbol,
+            "company_name": stock.company_name,
+            "sector": stock.sector,
+            "metrics": metrics.metrics if metrics else None,
+            "filings": [
+                {
+                    "type": f.filing_type,
+                    "date": f.filing_date,
+                    "url": f.filing_url,
+                    "data": f.filing_data
+                }
+                for f in filings
+            ] if filings else []
+        }
+        
+    except Exception as e:
+        logger.error(f"Error fetching research data: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/stock/{symbol}/fetch-latest-10k")
+async def fetch_latest_10k(symbol: str, db: Session = Depends(get_db)):
+    """Fetch latest 10-K filing for a stock"""
+    if not queryApi:
+        raise HTTPException(
+            status_code=503,
+            detail="SEC API not configured"
+        )
+    
+    try:
+        logger.info(f"Fetching latest 10-K for {symbol}")
+        stock = db.query(WatchlistStock).filter(WatchlistStock.symbol == symbol).first()
+        if not stock:
+            raise HTTPException(status_code=404, detail="Stock not found in watchlist")
+
+        # Format CIK - remove leading zeros as per API docs
+        cik = str(int(stock.cik))  # Remove leading zeros
+        logger.info(f"Using CIK: {cik}")
+        
+        # Query for latest 10-K using proper format
+        query = {
+            "query": f'cik:{cik} AND formType:"10-K"',
+            "from": "0",
+            "size": "1",
+            "sort": [{"filedAt": {"order": "desc"}}]
+        }
+        
+        logger.info(f"SEC API Query: {json.dumps(query, indent=2)}")
+        filings = queryApi.get_filings(query)
+        logger.info(f"SEC API Response: {json.dumps(filings, indent=2)}")
+        
+        if not filings or 'filings' not in filings or not filings['filings']:
+            # Try alternative query format
+            alternative_query = {
+                "query": f'ticker:{symbol} AND formType:"10-K"',
+                "from": "0",
+                "size": "1",
+                "sort": [{"filedAt": {"order": "desc"}}]
+            }
+            logger.info(f"Trying alternative query by ticker: {json.dumps(alternative_query, indent=2)}")
+            filings = queryApi.get_filings(alternative_query)
+            logger.info(f"Alternative query response: {json.dumps(filings, indent=2)}")
+            
+            if not filings or 'filings' not in filings or not filings['filings']:
+                raise HTTPException(status_code=404, detail="No 10-K filings found")
+        
+        latest_filing = filings['filings'][0]
+        filing_url = latest_filing['linkToFilingDetails']
+        
+        # Get the filing date and parse it correctly
+        filed_at = latest_filing['filedAt']
+        try:
+            # Handle both -05:00 and -04:00 timezones
+            base_date = filed_at.rsplit('-', 1)[0]  # More robust splitting
+            filing_date = datetime.strptime(base_date, '%Y-%m-%dT%H:%M:%S')
+        except ValueError as e:
+            logger.error(f"Failed to parse date '{filed_at}': {str(e)}")
+            raise HTTPException(
+                status_code=500, 
+                detail=f"Invalid date format from SEC API: {filed_at}"
+            )
+        
+        new_filing = StockFiling(
+            stock_id=stock.id,
+            filing_type="10-K",
+            filing_date=filing_date,
+            filing_url=filing_url,
+            filing_data={
+                'accessionNo': latest_filing['accessionNo'],
+                'description': latest_filing.get('description', ''),
+                'periodOfReport': latest_filing.get('periodOfReport', '')
+            }
+        )
+        db.add(new_filing)
+        db.commit()
+        
+        return {
+            "status": "success",
+            "filing_type": "10-K",
+            "filing_date": new_filing.filing_date.strftime("%Y-%m-%d"),
+            "filing_url": filing_url,
+            "message": f"Successfully fetched latest 10-K from {new_filing.filing_date.strftime('%Y-%m-%d')}"
+        }
+            
+    except ValueError as e:
+        logger.error(f"Date parsing error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Invalid date format: {str(e)}")
+
+@app.get("/stock/{symbol}/metrics")
+async def get_stock_metrics(symbol: str, db: Session = Depends(get_db)):
+    """Get financial metrics for a stock"""
+    try:
+        stock = db.query(WatchlistStock).filter(WatchlistStock.symbol == symbol).first()
+        if not stock:
+            raise HTTPException(status_code=404, detail="Stock not found in watchlist")
+        
+        # Get latest metrics
+        metrics = db.query(FinancialMetrics)\
+            .filter(FinancialMetrics.stock_id == stock.id)\
+            .order_by(FinancialMetrics.date.desc())\
+            .first()
+
+        if not metrics:
+            logger.info(f"No metrics found for {symbol}, fetching new data...")
+            # Add metrics fetching logic here
+            return {}
+
+        logger.info(f"Retrieved metrics for {symbol}: {metrics.metrics}")
+        return metrics.metrics
+
+    except Exception as e:
+        logger.error(f"Error fetching financial metrics: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     logger.info("Starting FastAPI server...")
