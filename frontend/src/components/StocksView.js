@@ -1,13 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip } from 'recharts';
 import './StocksView.css';
 import StockNews from './StockNews';
 import Watchlist from './Watchlist';
 import StockAnalysisHistory from './StockAnalysisHistory';
 
-const API_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://api.example.com'  // This will be replaced later with real backend
-  : 'http://localhost:8000';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 function StocksView() {
   const [ticker, setTicker] = useState('');
@@ -23,7 +21,11 @@ function StocksView() {
   const fetchPrice = async () => {
     if (!ticker) return;
     try {
-      setLivePrice(100.00); // Mock price
+      const response = await fetch(`${API_URL}/stock/${ticker}/price`);
+      if (!response.ok) throw new Error('Failed to fetch price');
+      const data = await response.json();
+      setLivePrice(data.price);
+      setLastFetchTime(new Date());
       setError(null);
     } catch (err) {
       setError(err.message);
@@ -36,12 +38,12 @@ function StocksView() {
     setIntervalId(newId);
   };
 
-  const stopUpdates = () => {
+  const stopUpdates = useCallback(() => {
     if (intervalId) {
       clearInterval(intervalId);
       setIntervalId(null);
     }
-  };
+  }, [intervalId]);
 
   useEffect(() => {
     return () => {
@@ -109,18 +111,6 @@ function StocksView() {
     }
   };
 
-  const fetchNews = async () => {
-    if (!ticker) return;
-    try {
-      const response = await fetch(`${API_URL}/stock/${ticker}/news`);
-      if (!response.ok) throw new Error('Failed to fetch news');
-      const data = await response.json();
-      // You can handle the news data here if needed
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
   return (
     <div className="stocks-view">
       <div className="stocks-layout">
@@ -152,6 +142,7 @@ function StocksView() {
             {livePrice && (
               <div className="live-price">
                 {ticker}: ${livePrice.toFixed(2)}
+                <small>Last updated: {lastFetchTime?.toLocaleTimeString()}</small>
               </div>
             )}
             {ticker && (

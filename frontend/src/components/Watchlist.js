@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import './Watchlist.css';
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+
 function Watchlist({ onSelectStock, onAnalyzeAll, isAnalyzing }) {
     const [watchlist, setWatchlist] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -8,37 +10,27 @@ function Watchlist({ onSelectStock, onAnalyzeAll, isAnalyzing }) {
 
     const fetchWatchlist = async () => {
         try {
-            const response = await fetch('http://localhost:8000/watchlist');
+            const response = await fetch(`${API_URL}/watchlist`);
             if (!response.ok) throw new Error('Failed to fetch watchlist');
             const data = await response.json();
-            setWatchlist(data.watchlist);
+            setWatchlist(data.watchlist || []);
         } catch (err) {
+            console.error('Watchlist Error:', err);
             setError(err.message);
         } finally {
             setLoading(false);
         }
     };
 
-    const addToWatchlist = async (symbol) => {
-        try {
-            const response = await fetch(`http://localhost:8000/watchlist/${symbol}`, {
-                method: 'POST'
-            });
-            if (!response.ok) throw new Error('Failed to add to watchlist');
-            fetchWatchlist();
-        } catch (err) {
-            setError(err.message);
-        }
-    };
-
     const removeFromWatchlist = async (symbol) => {
         try {
-            const response = await fetch(`http://localhost:8000/watchlist/${symbol}`, {
+            const response = await fetch(`${API_URL}/watchlist/${symbol}`, {
                 method: 'DELETE'
             });
             if (!response.ok) throw new Error('Failed to remove from watchlist');
-            fetchWatchlist();
+            await fetchWatchlist();
         } catch (err) {
+            console.error('Remove Error:', err);
             setError(err.message);
         }
     };

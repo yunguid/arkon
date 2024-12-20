@@ -3,12 +3,12 @@ import os
 import json
 import logging
 import datetime
-from fastapi import FastAPI, File, UploadFile, HTTPException, Depends
+from fastapi import FastAPI, File, UploadFile, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import polars as pl
 from dotenv import load_dotenv
-from database import SessionLocal, FinancialDocument, StockNews, Watchlist, StockAnalysisHistory
+from database import SessionLocal, FinancialDocument, StockNews, Watchlist, StockAnalysisHistory, init_db
 from sqlalchemy.orm import Session
 import ell
 from ell.types import Message
@@ -17,6 +17,7 @@ import yfinance as yf
 from services.news_scraper import PerplexityNewsAnalyzer, NewsCollector
 from services.news_scheduler import NewsScheduler
 from functools import lru_cache
+from contextlib import asynccontextmanager
 
 class DateJSONEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -31,7 +32,14 @@ def get_db():
     finally:
         db.close()
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('financial_analyzer.log'),
+        logging.StreamHandler()
+    ]
+)
 logger = logging.getLogger(__name__)
 
 load_dotenv()
@@ -116,34 +124,33 @@ def enhance_categorization(df: pl.DataFrame) -> pl.DataFrame:
 
 app = FastAPI()
 
+# Initialize components
+perplexity_key = os.getenv("PERPLEXITY_API_KEY")
+analyzer = PerplexityNewsAnalyzer(perplexity_key) if perplexity_key else None
+db = SessionLocal()
+collector = NewsCollector(db, analyzer) if analyzer else None
+scheduler = NewsScheduler(collector, symbols=["AAPL", "MSFT", "GOOGL"]) if collector else None
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    logger.info("Initializing database...")
+    init_db()
+    if scheduler:
+        logger.info("News collection system initializing...")
+        scheduler.start()
+    yield
+    # Shutdown
+    if scheduler:
+        scheduler.shutdown()
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-@app.on_event("startup")
-async def startup_event():
-    try:
-        # Initialize news collection system
-        perplexity_key = os.getenv("PERPLEXITY_API_KEY")
-        if not perplexity_key:
-            logger.warning("PERPLEXITY_API_KEY not set, news collection disabled")
-            return
-            
-        analyzer = PerplexityNewsAnalyzer(perplexity_key)
-        db = SessionLocal()
-        collector = NewsCollector(db, analyzer)
-        
-        # Start scheduler with default symbols
-        scheduler = NewsScheduler(collector, symbols=["AAPL", "MSFT", "GOOGL"])
-        scheduler.start()
-        
-        logger.info("News collection system initialized")
-    except Exception as e:
-        logger.error(f"Failed to initialize news system: {e}")
 
 def process_financial_data(contents: bytes):
     try:
@@ -549,31 +556,26 @@ async def get_analysis_history(
 async def get_stock_price(symbol: str):
     try:
         ticker = yf.Ticker(symbol)
-        logger.info(f"Fetching data for {symbol}")
+        data = ticker.history(period="1d")
         
-        # Debug what data we're getting
-        info = ticker.info
-        logger.info(f"Raw ticker info: {info}")
-        
-        if not info:
+        if data.empty:
             raise HTTPException(status_code=404, detail=f"No data found for {symbol}")
             
-        # Try multiple price fields that yfinance might return
-        price = info.get('regularMarketPrice') or info.get('currentPrice') or info.get('lastPrice')
-        
-        if not price:
-            # Log available fields to see what we can use
-            logger.error(f"Available fields: {info.keys()}")
-            raise HTTPException(status_code=404, detail=f"No price data for {symbol}")
+        if 'Close' not in data.columns:
+            raise HTTPException(status_code=500, detail="Invalid data format from yfinance")
             
+        current_price = float(data['Close'].iloc[-1])
         return {
             "symbol": symbol,
-            "price": price,
+            "price": current_price,
             "last_updated": datetime.now().isoformat()
         }
     except Exception as e:
         logger.error(f"Error fetching price for {symbol}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to fetch price: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to fetch price for {symbol}: {str(e)}"
+        )
 
 if __name__ == "__main__":
     logger.info("Starting FastAPI server...")

@@ -57,6 +57,10 @@ class StockAnalysisHistory(Base):
     def __repr__(self):
         return f"<StockAnalysisHistory(symbol='{self.symbol}', date='{self.analysis_date}')>"
 
-# Move this to a separate initialization script
-if __name__ == '__main__':
-    Base.metadata.create_all(bind=engine) 
+def init_db():
+    """Initialize the database, creating all tables if they don't exist"""
+    Base.metadata.create_all(bind=engine)
+
+# Remove or comment out this part since we're using init_db function now
+# if __name__ == '__main__':
+#     Base.metadata.create_all(bind=engine) 

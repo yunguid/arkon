@@ -27,11 +27,17 @@ class PerplexityNewsAnalyzer:
         
         # Fix common JSON issues
         json_str = json_str.replace('\n', ' ')  # Remove newlines
-        json_str = json_str.replace('\\', '\\\\')  # Escape backslashes
         
-        # Fix trailing commas (common AI error)
+        # Fix nested quotes - replace \" with single quotes
+        json_str = json_str.replace('\\"', "'")
+        
+        # Handle any remaining escaped backslashes
+        json_str = json_str.replace('\\', '\\\\')
+        
+        # Fix trailing commas
         json_str = json_str.replace(',}', '}').replace(',]', ']')
         
+        logger.debug(f"Cleaned JSON string: {json_str}")
         return json_str
 
     async def analyze_stock_news(self, symbol: str, articles: List[Dict]) -> Dict:
@@ -45,17 +51,17 @@ class PerplexityNewsAnalyzer:
             Rules:
             1. Response must be ONLY valid JSON
             2. No trailing commas
-            3. All strings must be properly escaped
+            3. Use single quotes (') for quoted text within strings
             4. No comments or additional text
             
-            Required format:
+            Example format:
             {{
-                "key_developments": "Brief summary",
-                "market_sentiment": "positive/negative/neutral",
-                "price_impact": "Brief analysis",
-                "risks": ["Risk 1", "Risk 2"],
-                "expert_quotes": ["Quote 1", "Quote 2"],
-                "summary": "Overall summary"
+                "key_developments": "Company was rated as 'buy' by analysts",
+                "market_sentiment": "positive",
+                "price_impact": "Stock rose 5% after 'strong buy' rating",
+                "risks": ["Competition from 'major players'"],
+                "expert_quotes": ["Analyst says 'very bullish'"],
+                "summary": "Overall positive with 'strong' outlook"
             }}
             
             Articles: {json.dumps(articles)}
@@ -77,6 +83,7 @@ class PerplexityNewsAnalyzer:
             # Clean and parse JSON
             try:
                 cleaned_content = self._clean_json_string(content)
+                logger.info(f"Cleaned JSON string: {cleaned_content}")
                 result = json.loads(cleaned_content)
                 
                 # Validate required fields
@@ -117,23 +124,6 @@ class PerplexityNewsAnalyzer:
                 "expert_quotes": [],
                 "summary": "Analysis failed: " + str(e)
             }
-    
-    def _create_analysis_prompt(self, symbol: str, articles: List[Dict]) -> str:
-        return f"""
-        Analyze these news articles about {symbol} and return a JSON object with this exact structure:
-        {{
-            "key_developments": "Brief summary of main points",
-            "market_sentiment": "positive/negative/neutral",
-            "price_impact": "Brief price impact analysis",
-            "risks": ["Risk 1", "Risk 2"],
-            "expert_quotes": ["Quote 1", "Quote 2"],
-            "summary": "Overall summary"
-        }}
-        
-        Articles: {json.dumps(articles)}
-        
-        Important: Return ONLY the JSON object, no other text.
-        """
 
 class NewsCollector:
     def __init__(self, db, analyzer):

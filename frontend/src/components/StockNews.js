@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './StockNews.css';
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 function StockNews({ symbol }) {
     const [news, setNews] = useState(null);
@@ -8,14 +10,12 @@ function StockNews({ symbol }) {
     const [status, setStatus] = useState('');
     const [isCollecting, setIsCollecting] = useState(false);
 
-    const fetchNews = async () => {
+    const fetchNews = useCallback(async () => {
         try {
             setStatus('Fetching news data...');
-            const response = await fetch(`http://localhost:8000/stock/${symbol}/news`);
+            const response = await fetch(`${API_URL}/stock/${symbol}/news`);
             if (!response.ok) throw new Error('Failed to fetch news');
             const data = await response.json();
-            console.log('Fetched News Data:', data);
-            console.log('News Array:', data.news);
             setNews(data.news);
             setError(null);
             setStatus('');
@@ -26,14 +26,14 @@ function StockNews({ symbol }) {
         } finally {
             setLoading(false);
         }
-    };
+    }, [symbol]);
 
     const triggerNewsCollection = async () => {
         try {
             setIsCollecting(true);
             setStatus('Initiating news collection...');
             
-            const response = await fetch(`http://localhost:8000/stock/${symbol}/collect_news`, {
+            const response = await fetch(`${API_URL}/stock/${symbol}/collect_news`, {
                 method: 'POST'
             });
             
@@ -61,7 +61,7 @@ function StockNews({ symbol }) {
         if (symbol) {
             fetchNews();
         }
-    }, [symbol]);
+    }, [symbol, fetchNews]);
 
     console.log('Current State:', {
         news,
