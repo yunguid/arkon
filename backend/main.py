@@ -546,6 +546,13 @@ async def get_analysis_history(
         ]
     }
 
+# Add Yahoo Finance configuration
+YAHOO_CREDENTIALS = {
+    "app_id": os.getenv("YAHOO_FINANCE_APP_ID"),
+    "client_id": os.getenv("YAHOO_FINANCE_CLIENT_ID"),
+    "client_secret": os.getenv("YAHOO_FINANCE_CLIENT_SECRET")
+}
+
 if __name__ == "__main__":
     logger.info("Starting FastAPI server...")
     uvicorn.run(app, host="0.0.0.0", port=8000)

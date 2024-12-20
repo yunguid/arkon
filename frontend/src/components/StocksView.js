@@ -9,6 +9,8 @@ const API_URL = process.env.NODE_ENV === 'production'
   ? 'https://api.example.com'  // This will be replaced later with real backend
   : 'http://localhost:8000';
 
+const YAHOO_API_KEY = 'your_yahoo_finance_api_key';
+
 function StocksView() {
   const [ticker, setTicker] = useState('');
   const [livePrice, setLivePrice] = useState(null);
@@ -122,6 +124,15 @@ function StocksView() {
     } catch (err) {
       setError(err.message);
     }
+  };
+
+  const getStockPrice = async (symbol) => {
+    const response = await fetch(`/api/stock/${symbol}`, {
+      headers: {
+        'Authorization': `Bearer ${YAHOO_API_KEY}`  // Using your Client ID
+      }
+    });
+    return response.json();
   };
 
   return (
