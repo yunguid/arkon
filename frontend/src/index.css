@@ -36,8 +36,8 @@
 body {
   margin: 0;
   padding: 0;
-  background: var(--color-bg-primary);
-  color: var(--color-text);
+  background: linear-gradient(145deg, #1B2638, #2C3E50);
+  color: #E5E8EC;
   font-family: 'Work Sans', sans-serif;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
@@ -128,4 +128,56 @@ button:hover {
   border-color: var(--color-chestnut);
   box-shadow: var(--shadow-strong), var(--glow-accent);
   transform: translateY(-2px);
+}
+
+/* Main navigation buttons */
+.main-nav {
+  display: flex;
+  gap: 1px;
+  margin: 2rem auto;
+  background: var(--military-red);
+  padding: 2px;
+  width: fit-content;
+}
+
+.nav-btn {
+  background: var(--color-bg-primary);
+  color: var(--color-text);
+  border: none;
+  padding: 0.8rem 1.5rem;
+  font-family: 'Share Tech Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  box-shadow: none;
+}
+
+.nav-btn:hover {
+  background: var(--color-bg-secondary);
+}
+
+.nav-btn.active {
+  background: var(--military-red);
+}
+
+.nav-btn::before {
+  content: '[';
+  margin-right: 8px;
+  color: var(--military-red);
+}
+
+.nav-btn::after {
+  content: ']';
+  margin-left: 8px;
+  color: var(--military-red);
+}
+
+.nav-btn:hover::before,
+.nav-btn:hover::after,
+.nav-btn.active::before,
+.nav-btn.active::after {
+  color: var(--color-text);
 } 

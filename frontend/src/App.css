@@ -1,9 +1,10 @@
 .App {
   min-height: 100vh;
   padding: 0;
-  background: #f0f2f5;
+  background: linear-gradient(145deg, #1B2638, #2C3E50);
   position: relative;
   overflow: hidden;
+  color: #E5E8EC;
 }
 
 .webgl-container {
@@ -11,7 +12,7 @@
   height: 220px;
   position: relative;
   overflow: hidden;
-  background: #4590db;
+  background: linear-gradient(145deg, #2C3E50, #1B2638);
 }
 
 .webgl-container canvas {
@@ -43,10 +44,11 @@
 }
 
 .error-message {
-  color: #d32f2f;
+  color: #E5E8EC;
   padding: 1rem;
   margin: 1rem 0;
-  background: #ffebee;
+  background: rgba(231, 76, 60, 0.2);
+  border-left: 4px solid #e74c3c;
   border-radius: 4px;
 }
 
@@ -82,22 +84,42 @@
 .main-nav {
   display: flex;
   justify-content: center;
-  gap: 1rem;
-  padding: 1rem;
-  background: rgba(44, 62, 80, 0.1);
+  gap: 1.5rem;
+  padding: 2.5rem;
+  background: linear-gradient(145deg, #2C3E50, #1B2638);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  color: #E5E8EC;
+  border: 2px solid rgba(255,255,255,0.2);
+  margin: 2rem auto;
+  max-width: 1200px;
+  width: 95%;
 }
 
 .nav-btn {
-  padding: 0.5rem 1rem;
-  background: transparent;
-  border: 1px solid #3498db;
-  color: #3498db;
+  padding: 1rem 2.5rem;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-weight: 600;
+  color: #E5E8EC;
+  background: linear-gradient(145deg, #2C3E50, #1B2638);
+  border: 1px solid rgba(255,255,255,0.2);
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  min-width: 200px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.nav-btn:hover {
+  background: linear-gradient(145deg, #1B2638, #2C3E50);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.2);
 }
 
 .nav-btn.active {
-  background: #3498db;
-  color: white;
+  background: linear-gradient(145deg, #1B2638, #2C3E50);
+  border-color: #E5E8EC;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.3);
 }

@@ -125,7 +125,7 @@ function StocksView() {
         <main className="stocks-main">
           {/* Stock input section */}
           <div className="stock-input-section">
-            <h2>Stock Performance</h2>
+            <h2>STOCK PERFORMANCE</h2>
             <div className="input-group">
               <input 
                 type="text" 

@@ -5,32 +5,52 @@
 }
 
 .stock-input-section {
-  background: rgba(44, 62, 80, 0.1);
-  padding: 1.5rem;
-  border-radius: 8px;
+  padding: 2.5rem;
+  background: linear-gradient(145deg, #1B2638, #2C3E50);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  color: #E5E8EC;
+  border: 2px solid rgba(255,255,255,0.2);
   margin-bottom: 2rem;
+  font-size: 1rem;
 }
 
 .input-group {
   display: flex;
-  gap: 1rem;
+  gap: 1.5rem;
   margin: 1rem 0;
 }
 
 .input-group input {
   flex: 1;
-  padding: 0.5rem;
-  border: 1px solid #3498db;
+  padding: 1rem;
+  background: linear-gradient(145deg, #2C3E50, #1B2638);
+  border: 1px solid rgba(255,255,255,0.2);
   border-radius: 4px;
+  color: #E5E8EC;
+  font-family: 'Playfair Display', Georgia, serif;
 }
 
 .input-group button {
-  padding: 0.5rem 1rem;
-  background: #3498db;
-  color: white;
-  border: none;
+  padding: 1rem 2.5rem;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-weight: 600;
+  color: #E5E8EC;
+  background: linear-gradient(145deg, #2C3E50, #1B2638);
+  border: 1px solid rgba(255,255,255,0.2);
   border-radius: 4px;
   cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  min-width: 150px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.input-group button:hover {
+  background: linear-gradient(145deg, #1B2638, #2C3E50);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.2);
 }
 
 .input-group button:disabled {
@@ -40,20 +60,39 @@
 
 .live-price {
   font-size: 1.5rem;
-  color: #2ecc71;
+  color: #E5E8EC;
   margin-top: 1rem;
+  padding: 1.5rem;
+  background: linear-gradient(145deg, #2C3E50, #1B2638);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 4px;
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+.live-price small {
+  display: block;
+  font-size: 0.9rem;
+  color: rgba(229, 232, 236, 0.7);
+  margin-top: 0.5rem;
 }
 
 .chart-container {
-  background: rgba(44, 62, 80, 0.1);
-  padding: 1.5rem;
-  border-radius: 8px;
+  padding: 2.5rem;
+  background: linear-gradient(145deg, #1B2638, #2C3E50);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  border: 2px solid rgba(255,255,255,0.2);
   margin-top: 2rem;
+  color: #E5E8EC;
 }
 
 .error-message {
-  color: #e74c3c;
+  color: #E5E8EC;
   margin: 1rem 0;
+  padding: 1rem;
+  background: rgba(231, 76, 60, 0.2);
+  border-left: 4px solid #e74c3c;
+  border-radius: 4px;
 }
 
 .stocks-layout {
@@ -69,4 +108,56 @@
 
 .stocks-main {
   flex-grow: 1;
+}
+
+/* Upload section styling */
+.upload-section {
+  margin: 2rem 0;
+  padding: 2.5rem;
+  background: linear-gradient(145deg, #1B2638, #2C3E50);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  border: 2px solid rgba(255,255,255,0.2);
+  color: #E5E8EC;
+}
+
+.upload-section h3 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Charts section styling */
+.charts-section {
+  padding: 2.5rem;
+  background: linear-gradient(145deg, #1B2638, #2C3E50);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  border: 2px solid rgba(255,255,255,0.2);
+  color: #E5E8EC;
+}
+
+.charts-section h4 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Recharts customization */
+.recharts-cartesian-grid line {
+  stroke: rgba(255,255,255,0.1);
+}
+
+.recharts-text {
+  font-family: 'Playfair Display', Georgia, serif !important;
+  fill: rgba(229, 232, 236, 0.7) !important;
+}
+
+.recharts-legend-item-text {
+  font-family: 'Playfair Display', Georgia, serif !important;
+  color: rgba(229, 232, 236, 0.7) !important;
 } 
