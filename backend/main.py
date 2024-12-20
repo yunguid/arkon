@@ -323,7 +323,6 @@ def get_cached_price(symbol: str, timestamp: int) -> float:
 async def get_stock_price(symbol: str):
     """Fetch current stock price with caching"""
     try:
-        # Use 1-minute timestamp for cache key
         timestamp = int(datetime.now().timestamp() / 60)
         price = get_cached_price(symbol, timestamp)
         return {"symbol": symbol, "price": price}
@@ -545,6 +544,36 @@ async def get_analysis_history(
             for h in history
         ]
     }
+
+@app.get("/stock/{symbol}/price")
+async def get_stock_price(symbol: str):
+    try:
+        ticker = yf.Ticker(symbol)
+        logger.info(f"Fetching data for {symbol}")
+        
+        # Debug what data we're getting
+        info = ticker.info
+        logger.info(f"Raw ticker info: {info}")
+        
+        if not info:
+            raise HTTPException(status_code=404, detail=f"No data found for {symbol}")
+            
+        # Try multiple price fields that yfinance might return
+        price = info.get('regularMarketPrice') or info.get('currentPrice') or info.get('lastPrice')
+        
+        if not price:
+            # Log available fields to see what we can use
+            logger.error(f"Available fields: {info.keys()}")
+            raise HTTPException(status_code=404, detail=f"No price data for {symbol}")
+            
+        return {
+            "symbol": symbol,
+            "price": price,
+            "last_updated": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error fetching price for {symbol}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch price: {str(e)}")
 
 if __name__ == "__main__":
     logger.info("Starting FastAPI server...")
