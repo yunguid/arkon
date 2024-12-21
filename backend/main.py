@@ -778,19 +778,47 @@ async def get_stock_metrics(symbol: str, db: Session = Depends(get_db)):
         if not stock:
             raise HTTPException(status_code=404, detail="Stock not found in watchlist")
         
-        # Get latest metrics
-        metrics = db.query(FinancialMetrics)\
-            .filter(FinancialMetrics.stock_id == stock.id)\
-            .order_by(FinancialMetrics.date.desc())\
-            .first()
+        # Fetch latest data from yfinance
+        try:
+            ticker = yf.Ticker(symbol)
+            data = ticker.info
+            
+            metrics = {
+                "market_cap": data.get('marketCap'),
+                "pe_ratio": data.get('trailingPE'),
+                "forward_pe": data.get('forwardPE'),
+                "dividend_yield": data.get('dividendYield'),
+                "beta": data.get('beta'),
+                "52_week_low": data.get('fiftyTwoWeekLow'),
+                "52_week_high": data.get('fiftyTwoWeekHigh'),
+                # Add any additional metrics you want
+                "price_to_book": data.get('priceToBook'),
+                "enterprise_value": data.get('enterpriseValue'),
+                "profit_margins": data.get('profitMargins')
+            }
+            
+            # Update database with latest metrics
+            db_metrics = FinancialMetrics(
+                stock_id=stock.id,
+                metrics=metrics
+            )
+            db.add(db_metrics)
+            db.commit()
+            
+            logger.info(f"Retrieved and stored metrics for {symbol}")
+            return metrics
 
-        if not metrics:
-            logger.info(f"No metrics found for {symbol}, fetching new data...")
-            # Add metrics fetching logic here
-            return {}
-
-        logger.info(f"Retrieved metrics for {symbol}: {metrics.metrics}")
-        return metrics.metrics
+        except Exception as e:
+            logger.error(f"Error fetching data from yfinance: {str(e)}")
+            # If yfinance fails, return last stored metrics if available
+            metrics = db.query(FinancialMetrics)\
+                .filter(FinancialMetrics.stock_id == stock.id)\
+                .order_by(FinancialMetrics.date.desc())\
+                .first()
+            
+            if metrics:
+                return metrics.metrics
+            raise
 
     except Exception as e:
         logger.error(f"Error fetching financial metrics: {str(e)}", exc_info=True)
