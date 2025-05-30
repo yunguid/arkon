@@ -1,126 +1,223 @@
 # Core
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
+pydantic==2.5.0
 python-multipart==0.0.6
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
 python-dotenv==1.0.0
 
 # Database
 sqlalchemy==2.0.23
 alembic==1.12.1
+asyncpg==0.29.0
 psycopg2-binary==2.9.9
 redis==5.0.1
+motor==3.3.2
 
-# ML & Data Science
-numpy==1.24.3
-pandas==2.1.3
-polars==0.19.12
-scikit-learn==1.3.2
+# Authentication
+google-auth==2.25.2
+google-auth-oauthlib==1.2.0
+google-auth-httplib2==0.2.0
+PyJWT==2.8.0
+
+# OpenAI & Voice
+openai==1.6.1
+websockets==12.0
+pyaudio==0.2.14
+
+# ML/AI
 torch==2.1.1
-torchvision==0.16.1
+transformers==4.35.2
+scikit-learn==1.3.2
+numpy==1.26.2
+pandas==2.1.3
 prophet==1.1.5
+tensorflow==2.15.0
+xgboost==2.0.2
+lightgbm==4.1.0
+catboost==1.2.2
+statsmodels==0.14.0
+scipy==1.11.4
 joblib==1.3.2
 
-# AI/LLM
-anthropic==0.7.1
-ell-ai==0.0.6
-openai==1.3.5
+# Blockchain
+web3==6.11.3
+eth-account==0.10.0
+eth-utils==3.0.0
+py-solc-x==2.0.2
 
-# Financial Data
-yfinance==0.2.33
-ta==0.10.2
-pandas-ta==0.3.14b0
-
-# Web & API
-aiohttp==3.9.1
-httpx==0.25.2
-strawberry-graphql[fastapi]==0.215.1
-websockets==12.0
-
-# Image & Document Processing
-Pillow==10.1.0
-pytesseract==0.3.10
-pdf2image==1.16.3
-PyPDF2==3.0.1
-opencv-python==4.8.1.78
-
-# Background Tasks
+# Task Queue
 celery==5.3.4
-redis==5.0.1
 flower==2.0.1
+kombu==5.3.4
 
-# Search & Analytics
-elasticsearch==8.11.0
-elasticsearch-dsl==8.11.0
+# API/GraphQL
+strawberry-graphql[fastapi]==0.215.1
+httpx==0.25.2
+aiohttp==3.9.1
 
-# Caching & Performance
-aiocache==0.12.2
-cachetools==5.3.2
-orjson==3.9.10
+# File Processing
+python-magic==0.4.27
+Pillow==10.1.0
+PyPDF2==3.0.1
+openpyxl==3.1.2
+python-docx==1.1.0
+
+# Monitoring
+prometheus-client==0.19.0
+sentry-sdk==1.38.0
+elastic-apm==6.19.0
+
+# Data Processing
+apache-beam==2.52.0
+apache-airflow==2.8.0
+great-expectations==0.18.5
+dbt-core==1.7.3
+pyspark==3.5.0
+
+# Cloud SDKs
+boto3==1.33.6
+google-cloud-storage==2.13.0
+azure-storage-blob==12.19.0
 
 # Security
 cryptography==41.0.7
-pyjwt==2.8.0
-passlib[bcrypt]==1.7.4
-python-jose[cryptography]==3.3.0
+pycryptodome==3.19.0
+python-owasp==0.1.0
 
-# Monitoring & Logging
-prometheus-client==0.19.0
-sentry-sdk==1.38.0
-structlog==23.2.0
-loguru==0.7.2
+# Email
+sendgrid==6.11.0
+python-mailgun==0.1.1
+
+# Utils
+pyyaml==6.0.1
+python-dateutil==2.8.2
+pytz==2023.3.post1
+orjson==3.9.10
+ujson==5.9.0
+msgpack==1.0.7
+arrow==1.3.0
+pendulum==2.1.2
 
 # Testing
 pytest==7.4.3
 pytest-asyncio==0.21.1
 pytest-cov==4.1.0
-hypothesis==6.92.1
+pytest-mock==3.12.0
+faker==20.1.0
 
 # Development
 black==23.11.0
 flake8==6.1.0
 mypy==1.7.1
 pre-commit==3.5.0
+ipython==8.18.1
 
-# Email & Notifications
-sendgrid==6.11.0
-twilio==8.10.3
-
-# Data Validation
-pydantic==2.5.2
-marshmallow==3.20.1
-
-# Task Scheduling
-apscheduler==3.10.4
-schedule==1.2.0
-
-# Utilities
-python-dateutil==2.8.2
-pytz==2023.3.post1
-humanize==4.9.0
-tqdm==4.66.1
-
-# Cloud Storage
-boto3==1.34.0
-minio==7.2.0
-
-# Blockchain & Crypto
-web3==6.11.3
-ccxt==4.1.56
-
-# NLP
-spacy==3.7.2
-textblob==0.17.1
-nltk==3.8.1
-
-# Visualization (for backend processing)
+# Visualization
 matplotlib==3.8.2
 seaborn==0.13.0
 plotly==5.18.0
+altair==5.2.0
+
+# NLP
+spacy==3.7.2
+nltk==3.8.1
+gensim==4.3.2
+sentence-transformers==2.2.2
+
+# Time Series
+pmdarima==2.0.4
+tsfresh==0.20.1
+sktime==0.24.1
+
+# Distributed Computing
+dask==2023.12.0
+ray==2.8.1
+
+# Feature Store
+feast==0.35.0
+tecton==0.8.0
+
+# Experiment Tracking
+mlflow==2.8.1
+wandb==0.16.1
+comet-ml==3.35.3
+
+# Model Serving
+bentoml==1.1.10
+seldon-core==1.17.1
+kserve==0.11.2
+
+# Data Validation
+pandera==0.17.2
+pydantic-extra-types==2.2.0
+
+# Performance
+numba==0.58.1
+cython==3.0.6
+pypy==7.3.13
+
+# Infrastructure
+terraform==1.6.5
+pulumi==3.95.0
+ansible==9.0.1
+
+# Message Queue
+aiokafka==0.10.0
+confluent-kafka==2.3.0
+pika==1.3.2
+
+# Search
+elasticsearch==8.11.0
+whoosh==2.7.4
+meilisearch==0.31.0
+
+# Caching
+aiocache==0.12.2
+diskcache==5.6.3
 
 # Rate Limiting
 slowapi==0.1.9
 python-limits==3.6.0
 
-# Feature Flags
-python-feature-flag==1.1.0
-unleash-client-python==5.9.1
+# Geospatial
+geopandas==0.14.1
+folium==0.15.1
+shapely==2.0.2
+
+# Computer Vision (for receipt scanning)
+opencv-python==4.8.1.78
+pytesseract==0.3.10
+easyocr==1.7.1
+
+# Voice/Audio Processing
+librosa==0.10.1
+soundfile==0.12.1
+pydub==0.25.1
+speechrecognition==3.10.1
+
+# GraphDB
+neo4j==5.15.0
+py2neo==2021.2.4
+
+# Document DB
+pymongo==4.6.1
+mongoengine==0.27.0
+
+# Time Series DB
+influxdb-client==1.38.0
+timescaledb==0.2.1
+
+# Streaming
+streamlit==1.29.0
+gradio==4.8.0
+
+# Orchestration
+prefect==2.14.9
+dagster==1.5.12
+
+# API Documentation
+mkdocs==1.5.3
+mkdocs-material==9.5.2
+pydoc-markdown==4.8.2

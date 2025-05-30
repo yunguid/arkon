@@ -3,7 +3,7 @@ import os
 import json
 import logging
 import datetime
-from fastapi import FastAPI, File, UploadFile, HTTPException, Depends
+from fastapi import FastAPI, File, UploadFile, HTTPException, Depends, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import polars as pl
@@ -17,6 +17,17 @@ import yfinance as yf
 from services.news_scraper import PerplexityNewsAnalyzer, NewsCollector
 from services.news_scheduler import NewsScheduler
 from functools import lru_cache
+from contextlib import asynccontextmanager
+import asyncio
+from typing import Dict
+from backend.config import settings
+from backend.database import init_db
+from backend.auth.google_auth import auth_router
+from backend.ml_api import ml_router
+from backend.graphql_api import graphql_app
+from backend.ai.openai_realtime import RealtimeVoiceAssistant
+from backend.websocket_server import connection_manager
+from backend.utils.logger import get_logger
 
 class DateJSONEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -114,15 +125,52 @@ def enhance_categorization(df: pl.DataFrame) -> pl.DataFrame:
             pl.lit("Unknown").alias("detail_category")
         ])
 
-app = FastAPI()
+app = FastAPI(
+    title=settings.APP_NAME,
+    description=settings.APP_DESCRIPTION,
+    version=settings.APP_VERSION,
+    lifespan=lifespan
+)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include routers
+app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(ml_router, prefix="/api/ml", tags=["Machine Learning"])
+
+# Mount GraphQL app
+app.mount("/graphql", graphql_app)
+
+# Serve static files (if needed)
+# app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup and shutdown events"""
+    # Startup
+    logger.info(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")
+    
+    # Initialize database
+    await init_db()
+    
+    # Start background tasks
+    # TODO: Start ML model updater, monitoring, etc.
+    
+    yield
+    
+    # Shutdown
+    logger.info("Shutting down application")
+    
+    # Cleanup voice sessions
+    for session_id, assistant in voice_sessions.items():
+        await assistant.stop()
+    voice_sessions.clear()
 
 @app.on_event("startup")
 async def startup_event():
@@ -552,6 +600,136 @@ YAHOO_CREDENTIALS = {
     "client_id": os.getenv("YAHOO_FINANCE_CLIENT_ID"),
     "client_secret": os.getenv("YAHOO_FINANCE_CLIENT_SECRET")
 }
+
+# Active voice assistant sessions
+voice_sessions: Dict[str, RealtimeVoiceAssistant] = {}
+
+@app.get("/")
+async def root():
+    """Root endpoint"""
+    return {
+        "app": settings.APP_NAME,
+        "version": settings.APP_VERSION,
+        "status": "running",
+        "features": {
+            "voice_assistant": settings.ENABLE_VOICE_ASSISTANT,
+            "blockchain": settings.ENABLE_BLOCKCHAIN,
+            "ml_predictions": settings.ENABLE_ML_PREDICTIONS,
+            "real_time": settings.ENABLE_REAL_TIME
+        }
+    }
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "timestamp": asyncio.get_event_loop().time()
+    }
+
+@app.websocket("/ws/voice-assistant")
+async def voice_assistant_websocket(websocket: WebSocket):
+    """WebSocket endpoint for voice assistant"""
+    await websocket.accept()
+    session_id = None
+    
+    try:
+        # Get initial configuration
+        config_data = await websocket.receive_json()
+        user_id = config_data.get("userId")
+        session_id = f"{user_id}_{asyncio.get_event_loop().time()}"
+        
+        # Create voice assistant instance
+        assistant = RealtimeVoiceAssistant(user_id=user_id)
+        voice_sessions[session_id] = assistant
+        
+        # Start the assistant
+        await assistant.start()
+        
+        # Send ready signal
+        await websocket.send_json({
+            "type": "ready",
+            "sessionId": session_id
+        })
+        
+        # Handle messages
+        while True:
+            # Receive data (can be JSON or binary audio)
+            try:
+                # Try to receive JSON first
+                data = await websocket.receive_json()
+                
+                if data["type"] == "configure":
+                    # Handle configuration updates
+                    pass
+                elif data["type"] == "start_listening":
+                    # Start listening
+                    pass
+                elif data["type"] == "stop_listening":
+                    # Stop listening
+                    pass
+                    
+            except:
+                # If not JSON, assume it's audio data
+                audio_data = await websocket.receive_bytes()
+                # Process audio data
+                # This would be forwarded to OpenAI Realtime API
+                pass
+                
+    except WebSocketDisconnect:
+        logger.info(f"Voice assistant session {session_id} disconnected")
+    except Exception as e:
+        logger.error(f"Voice assistant error: {e}")
+        await websocket.send_json({
+            "type": "error",
+            "message": str(e)
+        })
+    finally:
+        # Cleanup
+        if session_id and session_id in voice_sessions:
+            await voice_sessions[session_id].stop()
+            del voice_sessions[session_id]
+
+@app.websocket("/ws/{client_id}")
+async def websocket_endpoint(websocket: WebSocket, client_id: str):
+    """General WebSocket endpoint for real-time updates"""
+    await connection_manager.connect(websocket, client_id)
+    
+    try:
+        while True:
+            # Receive and broadcast messages
+            data = await websocket.receive_json()
+            
+            # Handle different message types
+            if data.get("type") == "subscribe":
+                # Subscribe to specific channels
+                channels = data.get("channels", [])
+                await connection_manager.subscribe(client_id, channels)
+                
+            elif data.get("type") == "unsubscribe":
+                # Unsubscribe from channels
+                channels = data.get("channels", [])
+                await connection_manager.unsubscribe(client_id, channels)
+                
+            else:
+                # Broadcast message to relevant clients
+                await connection_manager.broadcast(data, data.get("channel"))
+                
+    except WebSocketDisconnect:
+        await connection_manager.disconnect(client_id)
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
+        await connection_manager.disconnect(client_id)
+
+# Error handlers
+@app.exception_handler(404)
+async def not_found_handler(request, exc):
+    return {"error": "Not found", "status_code": 404}
+
+@app.exception_handler(500)
+async def internal_error_handler(request, exc):
+    logger.error(f"Internal server error: {exc}")
+    return {"error": "Internal server error", "status_code": 500}
 
 if __name__ == "__main__":
     logger.info("Starting FastAPI server...")

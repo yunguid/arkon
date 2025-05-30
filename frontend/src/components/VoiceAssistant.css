@@ -1,0 +1,355 @@
+/* Voice Assistant Styles */
+.voice-assistant-container {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  z-index: 1000;
+}
+
+.voice-assistant-container.minimized .voice-assistant-panel {
+  display: none;
+}
+
+/* Voice Panel */
+.voice-assistant-panel {
+  position: absolute;
+  bottom: 80px;
+  right: 0;
+  width: 360px;
+  max-height: 480px;
+  background: rgba(20, 20, 20, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  box-shadow: 
+    0 20px 40px rgba(0, 0, 0, 0.3),
+    0 0 60px rgba(120, 119, 198, 0.1);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.voice-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.voice-header h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  color: #fff;
+}
+
+.voice-controls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.minimize-btn,
+.close-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+  border-radius: 6px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.minimize-btn:hover,
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+/* Status */
+.voice-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
+}
+
+.status-indicator.connecting {
+  background: #ffd93d;
+  box-shadow: 0 0 10px #ffd93d;
+  animation: pulse 1s infinite;
+}
+
+.status-indicator.connected {
+  background: #6bcf7f;
+  box-shadow: 0 0 10px #6bcf7f;
+}
+
+.status-indicator.error {
+  background: #ff6b6b;
+  box-shadow: 0 0 10px #ff6b6b;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.voice-status span {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Content */
+.voice-content {
+  flex: 1;
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+
+.voice-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.voice-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.voice-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.transcript,
+.response {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.transcript .label,
+.response .label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+  opacity: 0.7;
+}
+
+.transcript .label {
+  color: #7877c6;
+}
+
+.response .label {
+  color: #ff77c6;
+}
+
+.transcript p,
+.response p {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.voice-placeholder {
+  text-align: center;
+  padding: 2rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.voice-placeholder p {
+  margin-bottom: 0.5rem;
+}
+
+.voice-placeholder .hint {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Voice Button */
+.voice-button {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, #7877c6 0%, #ff77c6 100%);
+  box-shadow: 
+    0 4px 20px rgba(120, 119, 198, 0.4),
+    0 0 40px rgba(120, 119, 198, 0.2);
+  cursor: pointer;
+  position: relative;
+  overflow: visible;
+  transition: all 0.3s ease;
+}
+
+.voice-button:hover {
+  box-shadow: 
+    0 6px 30px rgba(120, 119, 198, 0.5),
+    0 0 60px rgba(120, 119, 198, 0.3);
+}
+
+.voice-button.active {
+  background: linear-gradient(135deg, #8887d6 0%, #ff87d6 100%);
+}
+
+.voice-button.listening {
+  animation: glow 2s ease-in-out infinite;
+}
+
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 
+      0 4px 20px rgba(120, 119, 198, 0.4),
+      0 0 40px rgba(120, 119, 198, 0.2);
+  }
+  50% {
+    box-shadow: 
+      0 4px 30px rgba(120, 119, 198, 0.6),
+      0 0 60px rgba(120, 119, 198, 0.4);
+  }
+}
+
+.voice-button-content {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.voice-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  pointer-events: none;
+}
+
+.mic-icon {
+  width: 28px;
+  height: 28px;
+  stroke-width: 2;
+  color: #fff;
+  z-index: 1;
+  position: relative;
+}
+
+/* Voice Visualizer */
+.voice-visualizer {
+  position: fixed;
+  bottom: 120px;
+  right: 2rem;
+  z-index: 999;
+  pointer-events: none;
+}
+
+.visualizer-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 60px;
+  padding: 0 20px;
+}
+
+.visualizer-bars .bar {
+  width: 4px;
+  background: linear-gradient(to top, #7877c6, #ff77c6);
+  border-radius: 2px;
+  opacity: 0.8;
+  min-height: 4px;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .voice-assistant-container {
+    bottom: 1rem;
+    right: 1rem;
+  }
+  
+  .voice-assistant-panel {
+    width: calc(100vw - 2rem);
+    right: -1rem;
+    bottom: 70px;
+    max-height: 60vh;
+  }
+  
+  .voice-button {
+    width: 56px;
+    height: 56px;
+  }
+  
+  .mic-icon {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+/* Dark mode compatibility */
+@media (prefers-color-scheme: light) {
+  .voice-assistant-panel {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+  }
+  
+  .voice-header,
+  .voice-status {
+    background: rgba(0, 0, 0, 0.02);
+    border-color: rgba(0, 0, 0, 0.05);
+  }
+  
+  .voice-header h3 {
+    color: #000;
+  }
+  
+  .minimize-btn,
+  .close-btn {
+    background: rgba(0, 0, 0, 0.05);
+    color: rgba(0, 0, 0, 0.7);
+  }
+  
+  .minimize-btn:hover,
+  .close-btn:hover {
+    background: rgba(0, 0, 0, 0.1);
+    color: #000;
+  }
+  
+  .transcript,
+  .response {
+    background: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.05);
+  }
+  
+  .transcript p,
+  .response p {
+    color: rgba(0, 0, 0, 0.9);
+  }
+  
+  .voice-placeholder {
+    color: rgba(0, 0, 0, 0.5);
+  }
+  
+  .voice-placeholder .hint {
+    color: rgba(0, 0, 0, 0.4);
+  }
+} 

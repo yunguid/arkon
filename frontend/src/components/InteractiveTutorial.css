@@ -1,0 +1,228 @@
+/* Interactive Tutorial Styles */
+.tutorial-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10000;
+  pointer-events: none;
+}
+
+.tutorial-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  pointer-events: auto;
+}
+
+.tutorial-spotlight {
+  z-index: 10001;
+}
+
+.tutorial-tooltip {
+  position: fixed;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 
+    0 20px 40px rgba(0, 0, 0, 0.2),
+    0 0 60px rgba(120, 119, 198, 0.1);
+  max-width: 400px;
+  z-index: 10002;
+  pointer-events: auto;
+}
+
+.tutorial-tooltip.center {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Arrow styles for different positions */
+.tutorial-tooltip::before {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background: #ffffff;
+  transform: rotate(45deg);
+}
+
+.tutorial-tooltip.top::before {
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.tutorial-tooltip.bottom::before {
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.tutorial-tooltip.left::before {
+  right: -10px;
+  top: 50%;
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.tutorial-tooltip.right::before {
+  left: -10px;
+  top: 50%;
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.tutorial-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 1.5rem 0;
+}
+
+.tutorial-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.tutorial-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 50%;
+  font-size: 1.5rem;
+  color: rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tutorial-close:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: rgba(0, 0, 0, 0.8);
+}
+
+.tutorial-content {
+  padding: 1rem 1.5rem;
+}
+
+.tutorial-content p {
+  margin: 0;
+  color: rgba(0, 0, 0, 0.7);
+  line-height: 1.6;
+}
+
+.tutorial-footer {
+  padding: 0 1.5rem 1.5rem;
+}
+
+.tutorial-progress {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.progress-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.progress-dot.active {
+  background: #7877c6;
+  transform: scale(1.2);
+}
+
+.tutorial-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+
+.btn-text {
+  background: none;
+  border: none;
+  color: rgba(0, 0, 0, 0.6);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  transition: color 0.2s ease;
+}
+
+.btn-text:hover {
+  color: rgba(0, 0, 0, 0.8);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #7877c6 0%, #ff77c6 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(120, 119, 198, 0.3);
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .tutorial-tooltip {
+    background: #1a1a1a;
+    color: #ffffff;
+  }
+  
+  .tutorial-tooltip::before {
+    background: #1a1a1a;
+  }
+  
+  .tutorial-header h3 {
+    color: #ffffff;
+  }
+  
+  .tutorial-close {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.5);
+  }
+  
+  .tutorial-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.8);
+  }
+  
+  .tutorial-content p {
+    color: rgba(255, 255, 255, 0.7);
+  }
+  
+  .progress-dot {
+    background: rgba(255, 255, 255, 0.2);
+  }
+  
+  .btn-text {
+    color: rgba(255, 255, 255, 0.6);
+  }
+  
+  .btn-text:hover {
+    color: rgba(255, 255, 255, 0.8);
+  }
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .tutorial-tooltip {
+    max-width: 90vw;
+    margin: 0 1rem;
+  }
+} 
