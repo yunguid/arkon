@@ -1,0 +1,142 @@
+{
+  "name": "Arkon Financial Intelligence",
+  "short_name": "Arkon",
+  "description": "AI-powered financial analysis and insights platform",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#3498db",
+  "background_color": "#ffffff",
+  "categories": ["finance", "productivity", "business"],
+  "lang": "en-US",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/icons/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-152x152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/dashboard.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "label": "Financial Dashboard"
+    },
+    {
+      "src": "/screenshots/ml-insights.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "label": "AI-Powered Insights"
+    },
+    {
+      "src": "/screenshots/budget-manager.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "label": "Budget Management"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Upload Transaction",
+      "url": "/upload",
+      "description": "Upload new financial data",
+      "icons": [
+        {
+          "src": "/icons/upload-96x96.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "View Insights",
+      "url": "/insights",
+      "description": "View AI-powered financial insights",
+      "icons": [
+        {
+          "src": "/icons/insights-96x96.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Budget Manager",
+      "url": "/budgets",
+      "description": "Manage your budgets",
+      "icons": [
+        {
+          "src": "/icons/budget-96x96.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "file",
+          "accept": [".csv", ".xlsx", ".xls", ".pdf"]
+        }
+      ]
+    }
+  },
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "features": [
+    "Cross Platform",
+    "fast",
+    "offline-capable",
+    "installable"
+  ]
+} 
