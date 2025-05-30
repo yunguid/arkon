@@ -434,8 +434,96 @@ const ChartsView = ({ summary }) => {
       {summary.ai_categories && summary.ai_categories.length > 0 && (
         <DonutChart data={summary.ai_categories} />
       )}
+
+      {/* Budget Alerts Section */}
+      {summary.budget_alerts && summary.budget_alerts.length > 0 && (
+        <div className="budget-alerts-section">
+          <h3>⚠️ Budget Alerts</h3>
+          <div className="budget-alerts-container">
+            {summary.budget_alerts.map((alert, index) => (
+              <div key={index} className="budget-alert-card">
+                <div className="alert-header">
+                  <span className="category-name">{alert.category}</span>
+                  <span className="percentage-badge">{alert.percentage.toFixed(0)}%</span>
+                </div>
+                <div className="alert-details">
+                  <div className="amount-bar">
+                    <div 
+                      className="amount-spent" 
+                      style={{ width: `${Math.min(alert.percentage, 100)}%` }}
+                    />
+                  </div>
+                  <div className="amount-text">
+                    <span>Spent: ${alert.spent.toFixed(2)}</span>
+                    <span>Limit: ${alert.limit.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Export Section */}
+      <div className="export-section">
+        <button 
+          className="export-btn"
+          onClick={() => handleExport('csv')}
+        >
+          Export as CSV
+        </button>
+        <button 
+          className="export-btn"
+          onClick={() => handleExport('json')}
+        >
+          Export as JSON
+        </button>
+      </div>
+
+      {/* Add more statistics */}
+      <div className="statistics-grid">
+        <div className="stat-card">
+          <h4>Median Transaction</h4>
+          <p className="stat-value">${summary.statistics?.median_transaction?.toFixed(2) || '0.00'}</p>
+        </div>
+        <div className="stat-card">
+          <h4>Standard Deviation</h4>
+          <p className="stat-value">${summary.statistics?.std_deviation?.toFixed(2) || '0.00'}</p>
+        </div>
+        <div className="stat-card">
+          <h4>Min Transaction</h4>
+          <p className="stat-value">${summary.statistics?.min_transaction?.toFixed(2) || '0.00'}</p>
+        </div>
+        <div className="stat-card">
+          <h4>Max Transaction</h4>
+          <p className="stat-value">${summary.statistics?.max_transaction?.toFixed(2) || '0.00'}</p>
+        </div>
+      </div>
     </div>
   );
+};
+
+// Add export handler
+const handleExport = async (format) => {
+  try {
+    // Get current file ID from props or state
+    const fileId = summary.file_id || 1; // You'll need to pass this from parent
+    
+    const response = await fetch(`http://localhost:8000/export/${fileId}?format=${format}`);
+    if (!response.ok) throw new Error('Export failed');
+    
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `financial_export.${format}`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  } catch (error) {
+    console.error('Export error:', error);
+  }
 };
 
 export default ChartsView;

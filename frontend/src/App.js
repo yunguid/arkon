@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import DocumentsList from './components/DocumentsList';
 import UploadForm from './components/UploadForm';
 import ChartsView from './components/ChartsView';
+import StocksView from './components/StocksView';
+import BudgetManager from './components/BudgetManager';
 import './App.css';
 import * as PIXI from 'pixi.js';
-import StocksView from './components/StocksView';
 
 function App() {
   const [currentSummary, setCurrentSummary] = useState(null);
@@ -184,12 +185,19 @@ function App() {
           Financial Analysis
         </button>
         <button 
+          className={`nav-btn ${view === 'budgets' ? 'active' : ''}`}
+          onClick={() => setView('budgets')}
+        >
+          Budget Management
+        </button>
+        <button 
           className={`nav-btn ${view === 'stocks' ? 'active' : ''}`}
           onClick={() => setView('stocks')}
         >
           Stock Performance
         </button>
       </nav>
+      
       {view === 'financial' ? (
         <div className="content-wrapper">
           <DocumentsList 
@@ -203,6 +211,8 @@ function App() {
             {currentSummary && <ChartsView summary={currentSummary} />}
           </div>
         </div>
+      ) : view === 'budgets' ? (
+        <BudgetManager />
       ) : (
         <StocksView />
       )}
